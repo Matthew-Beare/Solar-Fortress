@@ -1,0 +1,11 @@
+{
+  "soc_thresholds": {
+    "grid_pass_through": 30.0,
+    "grid_charge": 20.0,
+    "battery_return": 35.0
+  },
+  "qualification_seconds": {
+    "grid_charge": 60,
+    "stop_grid_charge": 60
+  }
+}
