@@ -1,0 +1,8 @@
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+.gitignore text eol=lf
+VERSION text eol=lf
+deploy/rc.local text eol=lf

@@ -1,0 +1,16 @@
+name: Controller policy tests
+on:
+  push:
+  pull_request:
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile controller and policy tests
+        run: python -m py_compile src/controller.py src/selftest.py
+      - name: Run battery SOC policy tests (no hardware)
+        run: python src/selftest.py

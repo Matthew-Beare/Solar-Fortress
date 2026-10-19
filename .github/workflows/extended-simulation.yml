@@ -1,0 +1,40 @@
+name: Extended source and simulation verification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  extended:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate source syntax and committed JSON
+        run: |
+          python -m compileall -q src vendor
+          python -m json.tool config/controller.json > /dev/null
+          python src/test_config.py
+          bash -n bin/*.sh deploy/rc.local
+      - name: Run controller validation and boundary tests
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p "test_controller_safety.py" -v
+      - name: Install simulation-only dependency
+        run: python -m pip install --disable-pip-version-check pyserial==3.5
+      - name: Exhaustive pure simulation without Victron D-Bus access
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import runpy
+          import sys
+          import types
+          # The full simulation uses __new__ and fake _read methods, not a live bus.
+          # A stub prevents import-time dependency on system D-Bus libraries.
+          sys.modules["dbus"] = types.ModuleType("dbus")
+          runpy.run_path("src/full_sim_test.py", run_name="__main__")
+          PY

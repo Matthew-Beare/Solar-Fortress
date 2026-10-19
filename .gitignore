@@ -1,0 +1,27 @@
+# Local runtime data and credentials
+logs/
+state/
+secrets/
+**/secrets/
+.env
+.env.*
+*.env
+*.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+
+# Python/editor artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.before-*.py
+*.readonly-backup.py
+*.bak
+.DS_Store
+
+# Local vendored build artifacts
+vendor/*.whl
+vendor/*.dist-info/

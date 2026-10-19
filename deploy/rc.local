@@ -1,0 +1,21 @@
+#!/bin/sh
+
+start_background()
+{
+    if command -v nohup >/dev/null 2>&1
+    then
+        nohup "$@" >/dev/null 2>&1 &
+    else
+        "$@" >/dev/null 2>&1 &
+    fi
+}
+
+start_background \
+    /data/solar-fortress/bin/watchdog.sh
+
+start_background \
+    /data/solar-fortress/bin/web-watchdog.sh
+
+/data/solar-fortress/bin/install-login-hook.sh
+
+exit 0
