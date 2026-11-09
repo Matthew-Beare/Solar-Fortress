@@ -6,3 +6,4 @@
 .gitignore text eol=lf
 VERSION text eol=lf
 deploy/rc.local text eol=lf
+mission-control/** text eol=lf

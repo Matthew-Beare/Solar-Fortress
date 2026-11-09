@@ -2,9 +2,9 @@ name: Mission Control UI
 on:
   push:
     branches: ["fix/mission-control-led-rendering"]
-    paths: ["mission-control/**", ".github/workflows/mission-control-ui.yml"]
+    paths: ["mission-control/**", ".github/workflows/mission-control-ui.yml", ".gitattributes"]
   pull_request:
-    paths: ["mission-control/**", ".github/workflows/mission-control-ui.yml"]
+    paths: ["mission-control/**", ".github/workflows/mission-control-ui.yml", ".gitattributes"]
 permissions:
   contents: read
 jobs:
