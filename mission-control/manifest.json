@@ -1,0 +1,12 @@
+{
+  "version": "0.2.7",
+  "html_sha256": "b57d135724837e90732188b633182826ab3d3354848fb0b3dd2ff2b9741f4cd9",
+  "verifier_sha256": "e174d4bc6b253f8a49637eb277d9599213a25e5eb84e2d72d4e988806014102c",
+  "previous_html_sha256": "c48eb42595366bff36f411fa75817478adf5ffb0a9c94e28eccab03c7944b561",
+  "protected_sha256": {
+    "src/maintenance_policy.py": "c9d21c5a1f69c636c6a5efb92fbc0a8c2ad38e283afec20063211a8914537609",
+    "src/maintenance_runtime.py": "bae3d7eba3c0ad3129ccab36cd8c86d0e86848290cd13adda2aeabe91ce21e60",
+    "src/solar_fortress.py": "9cf99d0ca6683f061dc9aa0a15c2476389b08a9ecc798c7ec61767ffda7e9275",
+    "src/web_dashboard.py": "e610042e5f54eba5790fe81619a96259e1bda629232e9b32719ca2ed8378d20d"
+  }
+}

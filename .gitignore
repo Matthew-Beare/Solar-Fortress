@@ -25,3 +25,5 @@ __pycache__/
 # Local vendored build artifacts
 vendor/*.whl
 vendor/*.dist-info/
+mission-control/render-results/
+mission-control/render-verification-result.html

@@ -1,0 +1,36 @@
+name: Mission Control UI
+on:
+  push:
+    branches: ["fix/mission-control-led-rendering"]
+    paths: ["mission-control/**", ".github/workflows/mission-control-ui.yml"]
+  pull_request:
+    paths: ["mission-control/**", ".github/workflows/mission-control-ui.yml"]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Deployment safety checks
+        run: python -m unittest discover -s mission-control/tests -v
+      - name: Execute shipped LED logic
+        run: node mission-control/tests/test_led_logic.cjs
+      - name: Check generated verifier and manifest
+        run: |
+          python mission-control/build_release.py
+          git diff --exit-code -- mission-control/verify_render.html mission-control/preview.html mission-control/manifest.json
+      - name: Browser colours, blink phases and label bounds
+        run: python mission-control/tests/render_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mission-control-render-results
+          path: mission-control/render-results/
