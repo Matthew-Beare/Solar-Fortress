@@ -257,7 +257,7 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
  .battery-card .big{white-space:nowrap;font-size:clamp(25px,7.3vw,31px)}
 }
 
-/* Mission Control 0.2.7: responsive electrical map and real front-panel mirror.
+/* Mission Control 0.2.8: responsive electrical map and real front-panel mirror.
    LED classes own the rendered colour; SVG presentation attributes do not. */
 .hero{container-type:inline-size}
 .energy-map{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"pv grid" "bus inverter" "battery load";align-items:center;gap:34px 42px;max-width:760px;margin:15px auto 8px;padding:12px}
@@ -284,9 +284,9 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
 .physical-led[data-led-state="3"]{animation-delay:-.5s}
 .multiplus-model{color:#f1f8fd;font-size:17px;line-height:1.1;letter-spacing:-.025em;font-weight:780;margin:14px 2px 2px}.multiplus-model small{display:block;font-size:7px;letter-spacing:.13em;font-weight:600;margin-top:5px;color:#bee2f7}
 .multiplus-stripe{position:absolute;right:-13px;bottom:13px;width:58px;height:7px;transform:rotate(-45deg);background:#f59c32;box-shadow:0 3px 0 #0b5d96}
-.inverter-observed{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0 0;text-align:center}.actual-mode{font-size:13px;line-height:1.3;font-weight:800;letter-spacing:.04em;color:#e4f4ff}.inverter-telemetry-note{color:#8eaec2;font-size:9px;line-height:1.4}
+.inverter-observed{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0 0;text-align:center}.actual-mode{font-size:13px;line-height:1.3;font-weight:800;letter-spacing:.04em;color:#e4f4ff}
 .front-led-legend{font-size:8px;color:#91adbf;line-height:1.4;text-align:center;margin-top:7px}
-@container(max-width:560px){.energy-map{grid-template-areas:"pv grid" "bus battery" "inverter inverter" "load load";gap:34px 20px;padding:12px 18px;margin-top:9px}.energy-node{padding:13px 12px}.energy-source{min-height:105px}.energy-title{font-size:9px;letter-spacing:.04em;gap:5px}.energy-title svg{width:16px;height:16px}.energy-value{font-size:25px}.energy-bus{min-height:134px}.energy-bus .energy-value{font-size:23px}.energy-sub{font-size:9px}.energy-battery-row{gap:7px}.battery-symbol{flex-basis:23px;width:23px;height:49px;padding:3px}.battery-symbol:before{left:5px;right:5px}.energy-battery .energy-value{font-size:24px}.energy-battery-watts{font-size:11px}.battery-state{font-size:8px;padding:4px}.energy-inverter{padding:0}.multiplus-cabinet{max-width:285px;padding:17px 16px 15px}.multiplus-brand{font-size:18px}.front-led-name{font-size:12px}.front-led-heading{font-size:10px}.front-led-row{min-height:25px;gap:8px}.physical-led{flex-basis:9px;width:9px;height:9px}.multiplus-model{font-size:22px}.energy-load{min-height:93px}.energy-load .energy-value{font-size:28px}.inverter-observed{padding-top:10px}.actual-mode{font-size:16px}.inverter-telemetry-note{font-size:10px}}
+@container(max-width:560px){.energy-map{grid-template-areas:"pv grid" "bus battery" "inverter inverter" "load load";gap:34px 20px;padding:12px 18px;margin-top:9px}.energy-node{padding:13px 12px}.energy-source{min-height:105px}.energy-title{font-size:9px;letter-spacing:.04em;gap:5px}.energy-title svg{width:16px;height:16px}.energy-value{font-size:25px}.energy-bus{min-height:134px}.energy-bus .energy-value{font-size:23px}.energy-sub{font-size:9px}.energy-battery-row{gap:7px}.battery-symbol{flex-basis:23px;width:23px;height:49px;padding:3px}.battery-symbol:before{left:5px;right:5px}.energy-battery .energy-value{font-size:24px}.energy-battery-watts{font-size:11px}.battery-state{font-size:8px;padding:4px}.energy-inverter{padding:0}.multiplus-cabinet{max-width:285px;padding:17px 16px 15px}.multiplus-brand{font-size:18px}.front-led-name{font-size:12px}.front-led-heading{font-size:10px}.front-led-row{min-height:25px;gap:8px}.physical-led{flex-basis:9px;width:9px;height:9px}.multiplus-model{font-size:22px}.energy-load{min-height:93px}.energy-load .energy-value{font-size:28px}.inverter-observed{padding-top:10px}.actual-mode{font-size:16px}}
 @media(max-width:360px){.energy-battery .battery-symbol{display:none}}
 @media(prefers-reduced-motion:reduce){.physical-led[data-led-state="2"],.physical-led[data-led-state="3"]{animation:none;outline:1px dashed #dcefff;outline-offset:2px}}
 
@@ -364,7 +364,7 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
    <div class="multiplus-front"><div class="front-led-columns"><div class="front-led-column"><div class="front-led-heading">charger</div><div class="front-led-row"><span id="ledMainsMobile" class="physical-led" data-led-key="Mains" data-led-state="unknown" role="img" aria-label="mains on: unknown"></span><span class="front-led-name">mains on</span></div><div class="front-led-row"><span id="ledBulkMobile" class="physical-led" data-led-key="Bulk" data-led-state="unknown" role="img" aria-label="bulk: unknown"></span><span class="front-led-name">bulk</span></div><div class="front-led-row"><span id="ledAbsorptionMobile" class="physical-led" data-led-key="Absorption" data-led-state="unknown" role="img" aria-label="absorption: unknown"></span><span class="front-led-name">absorption</span></div><div class="front-led-row"><span id="ledFloatMobile" class="physical-led" data-led-key="Float" data-led-state="unknown" role="img" aria-label="float: unknown"></span><span class="front-led-name">float</span></div></div><div class="front-led-column"><div class="front-led-heading">inverter</div><div class="front-led-row"><span id="ledInverterMobile" class="physical-led" data-led-key="Inverter" data-led-state="unknown" role="img" aria-label="inverter on: unknown"></span><span class="front-led-name">inverter on</span></div><div class="front-led-row"><span id="ledOverloadMobile" class="physical-led" data-led-key="Overload" data-led-state="unknown" role="img" aria-label="overload: unknown"></span><span class="front-led-name">overload</span></div><div class="front-led-row"><span id="ledLowBatteryMobile" class="physical-led" data-led-key="LowBattery" data-led-state="unknown" role="img" aria-label="low battery: unknown"></span><span class="front-led-name">low battery</span></div><div class="front-led-row"><span id="ledTemperatureMobile" class="physical-led" data-led-key="Temperature" data-led-state="unknown" role="img" aria-label="temperature: unknown"></span><span class="front-led-name">temperature</span></div></div></div></div>
    <div class="multiplus-model">MultiPlus-II<small>INVERTER / CHARGER</small></div><div class="multiplus-stripe"></div>
   </div>
-  <div class="inverter-observed"><span id="mobileMode" class="actual-mode">UNKNOWN</span><span id="inverterTelemetryNote" class="inverter-telemetry-note">Waiting for VE.Bus LEDs</span></div>
+  <div class="inverter-observed"><span id="mobileMode" class="actual-mode">UNKNOWN</span></div>
  </section>
  <section class="energy-node energy-battery" id="energyBattery">
   <div class="energy-battery-row"><div class="battery-symbol" aria-hidden="true"><div class="battery-symbol-inner"><div id="mobileBatteryFill" class="battery-symbol-fill"></div></div></div><div class="energy-battery-data"><div class="energy-title">BATTERY</div><span id="mobileSoc" class="energy-value">--%</span><span id="mobileBattery" class="energy-battery-watts">-- W</span></div></div>
@@ -432,7 +432,7 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
 <div class="sectionhead"><div><h2>Charge controller fleet</h2><p>Individual PV voltage, charging stage, DC current and instantaneous output</p></div></div><div class="panel panel-pad" style="overflow-x:auto"><table class="long-table"><thead><tr><th>MPPT</th><th>STATE</th><th>OUTPUT (W)</th><th>DC CURRENT (A)</th><th>PV VOLTS</th><th>BATTERY VOLTS</th><th>ALL-TIME YIELD</th></tr></thead><tbody id="mpptTableBody"><tr><td colspan="7">Awaiting charge controllers</td></tr></tbody></table></div>
 <div class="sectionhead"><div><h2>Observed state transitions</h2><p>Events detected since page load, not the controller's durable event journal</p></div></div><div class="panel events"><div id="healthEvents"><div class="secondary">No transitions recorded</div></div></div>
 <div id="error" class="error-banner" role="alert" style="margin-top:15px"></div></section>
-<footer class="footbar"><span>✦ SOLAR FORTRESS / MISSION CONTROL · <b>v0.2.7 / LIVE EDITION</b></span><span>BOOMER HQ • 37663</span></footer>
+<footer class="footbar"><span>✦ SOLAR FORTRESS / MISSION CONTROL · <b>v0.2.8 / LIVE EDITION</b></span><span>BOOMER HQ • 37663</span></footer>
 </main></div>
 <script>
 (() => {
@@ -655,17 +655,13 @@ function renderPhysicalLeds(d,h){
  const colors={Mains:'#74ffae',Inverter:'#74ffae',Bulk:'#ffd365',Absorption:'#ffd365',Float:'#ffd365',Overload:'#ff5f6d',LowBattery:'#ff5f6d',Temperature:'#ff5f6d'};
  const names={Mains:'mains on',Inverter:'inverter on',Bulk:'bulk',Absorption:'absorption',Float:'float',Overload:'overload',LowBattery:'low battery',Temperature:'temperature'};
  const labels={0:'off',1:'on',2:'blinking',3:'inverse blinking'};
- let known=0;const active=[];
  for(const element of document.querySelectorAll('.physical-led[data-led-key]')){
   const key=element.dataset.ledKey,value=ledValue(readings[key]);
   element.style.setProperty('--led-color',colors[key]);
   element.dataset.ledState=value===null?'unknown':String(value);
   const description=names[key]+': '+(value===null?'unavailable':labels[value]);
   element.setAttribute('aria-label',description);element.title=description;
-  if(value!==null)known++;
-  if(value>0)active.push(description);
  }
- txt('inverterTelemetryNote',!h.live?'LED readings stale':known<8?'VE.Bus LEDs: '+known+'/8 available':active.length?active.join(' · '):'VE.Bus reports all eight LEDs off');
 }
 function layoutEnergyConnections(){
  const map=$('energyMap');if(!map)return;

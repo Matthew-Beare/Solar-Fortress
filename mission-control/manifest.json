@@ -1,8 +1,8 @@
 {
-  "version": "0.2.7",
-  "html_sha256": "b57d135724837e90732188b633182826ab3d3354848fb0b3dd2ff2b9741f4cd9",
-  "verifier_sha256": "471acb6a251cedff9074370b85c73e203ee6342e99936ab75dd4d2a8f37b7918",
-  "previous_html_sha256": "c48eb42595366bff36f411fa75817478adf5ffb0a9c94e28eccab03c7944b561",
+  "version": "0.2.8",
+  "html_sha256": "fa2064f3733f2601141fbde1cc2431bd64634ea445eba421183806a6e558de0a",
+  "verifier_sha256": "83957e377b2af4b83d41c5c82803a50d7837c55d713855ff9210d995af41dc3d",
+  "previous_html_sha256": "b57d135724837e90732188b633182826ab3d3354848fb0b3dd2ff2b9741f4cd9",
   "protected_sha256": {
     "src/maintenance_policy.py": "c9d21c5a1f69c636c6a5efb92fbc0a8c2ad38e283afec20063211a8914537609",
     "src/maintenance_runtime.py": "bae3d7eba3c0ad3129ccab36cd8c86d0e86848290cd13adda2aeabe91ce21e60",

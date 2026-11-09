@@ -20,7 +20,7 @@ $browserCandidates = @(
 )
 $browser = $browserCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (!$browser) { throw 'Edge or Chrome is required for rendered UI checks. Nothing uploaded. Open verify_render.html in Firefox to see the test report.' }
-$work = Join-Path ([IO.Path]::GetTempPath()) ('sf-ui-v027-' + [guid]::NewGuid().ToString('N'))
+$work = Join-Path ([IO.Path]::GetTempPath()) ('sf-ui-v028-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $work | Out-Null
 $stdout = Join-Path $work 'render.html'
 $stderr = Join-Path $work 'renderer.log'
@@ -68,15 +68,15 @@ try {
         $htmlPath, (Join-Path $root 'deploy_pi.py'), (Join-Path $root 'manifest.json')
     ) -DestinationPath $archive -Force
     $nonce = [guid]::NewGuid().ToString('N')
-    $remoteZip = "/data/solar-fortress/.sf-ui-v027-$nonce.zip"
-    $remoteDir = "/data/solar-fortress/.sf-ui-v027-$nonce"
+    $remoteZip = "/data/solar-fortress/.sf-ui-v028-$nonce.zip"
+    $remoteDir = "/data/solar-fortress/.sf-ui-v028-$nonce"
     Write-Host '=== UPLOADING TESTED UI ===' -ForegroundColor Cyan
     & scp -o ConnectTimeout=15 $archive ($pi + ':' + $remoteZip)
     if ($LASTEXITCODE -ne 0) { throw 'Upload failed.' }
     Write-Host '=== UI INSTALLATION / NO SERVICE RESTART ===' -ForegroundColor Cyan
     & ssh -o ConnectTimeout=15 $pi "python3 -m zipfile -e $remoteZip $remoteDir && python3 $remoteDir/deploy_pi.py"
     if ($LASTEXITCODE -ne 0) { throw 'Pi UI installation FAILED. Read the output above.' }
-    Write-Host 'SOLAR FORTRESS UI v0.2.7 INSTALLER PASSED' -ForegroundColor Green
+    Write-Host 'SOLAR FORTRESS UI v0.2.8 INSTALLER PASSED' -ForegroundColor Green
 } finally {
     Set-Location -LiteralPath $oldLocation
 }

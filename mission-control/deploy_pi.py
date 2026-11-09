@@ -129,17 +129,17 @@ def main():
     print('Controller / web PIDs:', json.dumps(pids, sort_keys=True), flush=True)
     if old_hash == new_hash:
         verify(new_hash, core, pids, identity)
-        print('=== VERIFIED: SOLAR FORTRESS UI 0.2.7 ALREADY SERVED ===', flush=True)
+        print('=== VERIFIED: SOLAR FORTRESS UI 0.2.8 ALREADY SERVED ===', flush=True)
         return
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-    backup = ROOT/'backups'/('mission-control-ui-v027-'+stamp)
+    backup = ROOT/'backups'/('mission-control-ui-v028-'+stamp)
     backup.mkdir(parents=True, exist_ok=False)
     shutil.copy2(CURRENT/HTML, backup/HTML)
     (backup/'rollback.json').write_text(json.dumps({
         'previous_target': str(previous), 'previous_html_sha256': old_hash,
         'protected_sha256': core, 'processes': pids,
     }, indent=2)+'\n')
-    release = ROOT/'mission-control'/'releases'/('mission-control-ui-v027-'+stamp)
+    release = ROOT/'mission-control'/'releases'/('mission-control-ui-v028-'+stamp)
     release.mkdir(parents=True, exist_ok=False)
     shutil.copy2(HERE/HTML, release/HTML)
     require(sha(release/HTML) == new_hash, 'staged UI checksum mismatch')
@@ -155,7 +155,7 @@ def main():
                     'automatic UI rollback could not be verified')
             print('ROLLBACK VERIFIED: previous UI restored', flush=True)
         raise
-    print('=== VERIFIED: SOLAR FORTRESS UI 0.2.7 SERVED ===', flush=True)
+    print('=== VERIFIED: SOLAR FORTRESS UI 0.2.8 SERVED ===', flush=True)
     print('Live VE.Bus LEDs:', json.dumps(live['vebus_leds'], sort_keys=True), flush=True)
     print('Requested controller mode:', live.get('mode'), flush=True)
     print('Controller and web PIDs unchanged:', json.dumps(pids, sort_keys=True), flush=True)

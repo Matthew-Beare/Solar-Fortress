@@ -1,6 +1,8 @@
-# Mission Control UI 0.2.7
+# Mission Control UI 0.2.8
 
-This replaces the v0.2.6 dashboard HTML after that release has been successfully installed. The charging policy is outside this UI update.
+Removes the redundant ordinary LED summary beneath INVERTING / PASS THROUGH.
+
+This replaces the v0.2.7 dashboard HTML after that release has been successfully installed. The charging policy is outside this UI update.
 
 The v0.2.6 LED bug was CSS specificity: the class stylesheet forced a dark fill and 0.6 opacity, overriding the SVG presentation attributes set by JavaScript. Its reversed symmetric blink animation also failed to distinguish inverse blinking. The old checks searched the HTML for strings and did not check rendered colours.
 
@@ -27,7 +29,7 @@ The operating label uses observed VE.Bus LEDs. The selected controller mode rema
 
 ## Installation
 
-Connect 2BOOMERHQ. In **Windows PowerShell**, expand SolarFortress-v0.2.7-UI-LED-FIX.zip and run SolarFortress-v0.2.7\install.ps1.
+Connect 2BOOMERHQ. In **Windows PowerShell**, expand SolarFortress-v0.2.8-UI-CLEANUP.zip and run SolarFortress-v0.2.8\install.ps1.
 
 The installer:
 
@@ -40,7 +42,7 @@ The installer:
 
 The Pi confirmation is:
 
-    === VERIFIED: SOLAR FORTRESS UI 0.2.7 SERVED ===
+    === VERIFIED: SOLAR FORTRESS UI 0.2.8 SERVED ===
 
 This confirms the served UI and live data contract. Compare the displayed indicators with the physical inverter after refreshing the page with Ctrl+F5.
 

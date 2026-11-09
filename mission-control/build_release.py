@@ -59,7 +59,7 @@ function fixturePage(source,d){
  return source.replace('<script>',prefix+'<script>');
 }
 """
-    verifier = """<!doctype html><html><head><meta charset="utf-8"><title>Solar Fortress 0.2.7 rendering verification</title>
+    verifier = """<!doctype html><html><head><meta charset="utf-8"><title>Solar Fortress 0.2.8 rendering verification</title>
 <style>body{margin:0;background:#071421;color:#e8f5ff;font:14px system-ui}header{padding:20px;background:#12344c}h1{margin:0 0 8px;font-size:22px}#report{padding:16px;white-space:pre-wrap}iframe{display:block;border:0;margin:0;max-width:none}</style></head>
 <body><header><h1>OFFLINE RENDER VERIFICATION</h1><div>Simulated readings only. This page never connects to the Pi.</div></header><pre id="report">Running browser checks...</pre><div id="frameHost"></div>
 <script>
@@ -92,7 +92,7 @@ next();
 """
     verifier = (verifier.replace('SOURCE', script_json(instrumented))
                 .replace('FIXTURES', data).replace('COMMON', common).replace('HASH', source_hash))
-    preview = """<!doctype html><html><head><meta charset="utf-8"><title>Solar Fortress 0.2.7 offline preview</title><style>body{margin:0;background:#071421;color:#fff;font:12px system-ui}header{padding:9px;background:#70501e}iframe{display:block;border:0;margin:auto;max-width:none}</style></head><body><header>OFFLINE PREVIEW — SIMULATED READINGS. Not the live Pi.</header><div id="host"></div><script>
+    preview = """<!doctype html><html><head><meta charset="utf-8"><title>Solar Fortress 0.2.8 offline preview</title><style>body{margin:0;background:#071421;color:#fff;font:12px system-ui}header{padding:9px;background:#70501e}iframe{display:block;border:0;margin:auto;max-width:none}</style></head><body><header>OFFLINE PREVIEW — SIMULATED READINGS. Not the live Pi.</header><div id="host"></div><script>
 const source=SOURCE,fixtures=FIXTURES;
 COMMON
 const q=new URLSearchParams(location.search),name=q.get('case')||'inverting',width=Math.max(320,Number(q.get('width')||1280));
@@ -102,7 +102,7 @@ const f=document.createElement('iframe');f.title='Solar Fortress offline preview
     (HERE/'verify_render.html').write_text(verifier)
     (HERE/'preview.html').write_text(preview)
     constraints = json.loads((HERE/'release_constraints.json').read_text())
-    manifest = dict(version='0.2.7', html_sha256=source_hash,
+    manifest = dict(version='0.2.8', html_sha256=source_hash,
                     verifier_sha256=hashlib.sha256(verifier.encode()).hexdigest(), **constraints)
     (HERE/'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
     return manifest
