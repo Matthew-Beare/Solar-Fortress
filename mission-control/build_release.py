@@ -73,7 +73,7 @@ function next(){
   document.documentElement.setAttribute('data-sf-render-verification',failures.length?'fail':'pass');
   document.documentElement.setAttribute('data-sf-source-sha256','HASH');
   document.getElementById('frameHost').replaceChildren();
-  document.getElementById('report').textContent=JSON.stringify({passed:failures.length===0,source_sha256:'HASH',fixtures:results.length,checks:total,failures},null,2);
+  document.getElementById('report').textContent=JSON.stringify({passed:failures.length===0,source_sha256:'HASH',fixtures:results.length,checks:total,motionPreferences:[...new Set(results.map(r=>r.reducedMotion))],failures},null,2);
   return;
  }
  active=queue.shift();const frame=document.createElement('iframe');frame.title='Rendering '+active.name+' at '+active.width+' pixels';frame.width=active.width;frame.height=3600;
@@ -83,7 +83,7 @@ window.addEventListener('message',event=>{
  const frame=document.querySelector('iframe');
  if(!active||event.source!==frame?.contentWindow||!event.data?.solarFortressRenderProof)return;
  const proof=event.data.solarFortressRenderProof;
- results.push({width:active.width,fixture:active.name,failures:proof.failures});
+ results.push({width:active.width,fixture:active.name,reducedMotion:proof.reducedMotion,failures:proof.failures});
  total+=proof.checks.length;document.getElementById('report').textContent=JSON.stringify({completed:results.length,checks:total,results},null,2);
  active=null;setTimeout(next,0);
 });

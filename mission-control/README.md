@@ -21,6 +21,8 @@ Primary reference: https://www.victronenergy.com/media/pg/MultiPlus-II_120V/en/o
 
 Each indicator reads its individual key in the existing API's vebus_leds object. Values 0/1/2/3 select off/on/blink/inverse-blink; unavailable or invalid values are shown as unavailable. The blink animation represents the reported indication; it does not claim frame-level synchronization with the physical lamp oscillator.
 
+With an operating-system preference for reduced motion, blinking lamps use a steady colour with a dashed outline; the reported blink state remains in their labels. Browser checks verify that accessible rendering as well as animated rendering.
+
 The operating label uses observed VE.Bus LEDs. The selected controller mode remains a separate diagnostic. Grid presence, accepted AC and grid watts remain separate readings.
 
 ## Installation

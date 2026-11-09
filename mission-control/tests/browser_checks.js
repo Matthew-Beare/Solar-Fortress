@@ -1,7 +1,8 @@
 
 // TEST FIXTURE ONLY: this block is never packaged or deployed.
 setTimeout(async()=>{
- const proof={checks:[],failures:[],fixture:true};
+ const reducedMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+ const proof={checks:[],failures:[],fixture:true,reducedMotion};
  const check=(name,pass,actual)=>{proof.checks.push({name,pass,actual});if(!pass)proof.failures.push({name,actual});};
  const base=sample||{};
  const keys=['Mains','Bulk','Absorption','Float','Inverter','Overload','LowBattery','Temperature'];
@@ -12,7 +13,9 @@ setTimeout(async()=>{
    renderPhysicalLeds(d,{live:true});
    const e=document.getElementById('led'+key+'Mobile'),c=getComputedStyle(e);
    check(key+' code '+value+' computed colour',c.backgroundColor===(value===0?'rgb(24, 35, 45)':colors[key]),c.backgroundColor);
-   check(key+' code '+value+' animation',(value<2)===(c.animationName==='none'),c.animationName);
+   const steady=value<2||reducedMotion;
+   check(key+' code '+value+' animation',steady===(c.animationName==='none')&&
+    (!reducedMotion||value<2||c.outlineStyle==='dashed'),{animation:c.animationName,outline:c.outlineStyle,reducedMotion});
   }
  }
  renderPhysicalLeds({...base,vebus_leds:Object.fromEntries(keys.map(k=>[k,1]))},{live:false});
@@ -22,7 +25,10 @@ setTimeout(async()=>{
   check('invalid LED reading '+String(bad),[...document.querySelectorAll('.physical-led')].every(e=>e.dataset.ledState==='unknown'));
  }
  renderPhysicalLeds({...base,vebus_leds:{Overload:2,LowBattery:3}},{live:true});
- check('opposite blink indication uses half-cycle offset',getComputedStyle(document.getElementById('ledLowBatteryMobile')).animationDelay==='-0.5s');
+ const inverse=document.getElementById('ledLowBatteryMobile'),normal=document.getElementById('ledOverloadMobile');
+ check('normal and inverse blink remain distinguishable',reducedMotion?
+  normal.dataset.ledState==='2'&&inverse.dataset.ledState==='3'&&inverse.getAttribute('aria-label').includes('inverse blinking'):
+  getComputedStyle(inverse).animationDelay==='-0.5s');
  const modeCases=[
   [{Mains:0,Inverter:1},false,'INVERTING'],
   [{Mains:1,Inverter:0},true,'PASS THROUGH'],

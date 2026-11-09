@@ -1,7 +1,7 @@
 {
   "version": "0.2.7",
   "html_sha256": "b57d135724837e90732188b633182826ab3d3354848fb0b3dd2ff2b9741f4cd9",
-  "verifier_sha256": "67d117ad01d2c0d9ea438806a17c6168d990e4e31bca88ec7e7314dca00b93d6",
+  "verifier_sha256": "471acb6a251cedff9074370b85c73e203ee6342e99936ab75dd4d2a8f37b7918",
   "previous_html_sha256": "c48eb42595366bff36f411fa75817478adf5ffb0a9c94e28eccab03c7944b561",
   "protected_sha256": {
     "src/maintenance_policy.py": "c9d21c5a1f69c636c6a5efb92fbc0a8c2ad38e283afec20063211a8914537609",
