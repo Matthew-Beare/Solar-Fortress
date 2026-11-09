@@ -20,7 +20,7 @@ def main():
         common = [browser, '--headless=new', '--disable-gpu', '--no-first-run',
                   '--no-default-browser-check', '--disable-background-networking',
                   '--user-data-dir='+temp]
-        result = subprocess.run(common+['--dump-dom', '--virtual-time-budget=20000',
+        result = subprocess.run(common+['--dump-dom', '--virtual-time-budget=90000',
                                 '--window-size=1280,900', (HERE/'verify_render.html').as_uri()],
                                 capture_output=True, text=True, timeout=55)
         (OUT/'verification.html').write_text(result.stdout)

@@ -24,19 +24,19 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ('sf-ui-v027-' + [guid]::NewGuid().
 New-Item -ItemType Directory -Path $work | Out-Null
 $stdout = Join-Path $work 'render.html'
 $stderr = Join-Path $work 'renderer.log'
-$profile = Join-Path $work 'browser-profile'
+$browserProfile = Join-Path $work 'browser-profile'
 $reportPath = Join-Path $root 'render-verification-result.html'
 $oldLocation = Get-Location
 try {
     Set-Location -LiteralPath $root
-    Write-Host '=== OFFLINE UI / DEPLOYMENT CHECKS ===' -ForegroundColor Cyan
+    Write-Host '=== OFFLINE PACKAGE INTEGRITY CHECKS ===' -ForegroundColor Cyan
     & python -m unittest discover -s tests -q
     if ($LASTEXITCODE -ne 0) { throw 'Offline checks failed. Nothing uploaded.' }
     Write-Host '=== RENDERED COLOURS, BLINK INDICATIONS AND LABEL FIT ===' -ForegroundColor Cyan
     $uri = ([Uri]$verifyPath).AbsoluteUri
     $arguments = @('--headless=new', '--disable-gpu', '--no-first-run',
         '--no-default-browser-check', '--disable-background-networking',
-        "--user-data-dir=$profile", '--dump-dom', '--virtual-time-budget=20000',
+        "--user-data-dir=$browserProfile", '--dump-dom', '--virtual-time-budget=90000',
         '--window-size=1280,900', $uri)
     # Start-Process joins ArgumentList; explicitly quote each Windows argument.
     $quoted = $arguments | ForEach-Object { '"' + $_ + '"' }

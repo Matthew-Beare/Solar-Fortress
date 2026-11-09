@@ -84,7 +84,7 @@ window.addEventListener('message',event=>{
  if(!active||event.source!==frame?.contentWindow||!event.data?.solarFortressRenderProof)return;
  const proof=event.data.solarFortressRenderProof;
  results.push({width:active.width,fixture:active.name,failures:proof.failures});
- total+=proof.checks.length;document.getElementById('report').textContent='Checked '+results.length+'/25 fixtures; '+total+' assertions.';
+ total+=proof.checks.length;document.getElementById('report').textContent=JSON.stringify({completed:results.length,checks:total,results},null,2);
  active=null;setTimeout(next,0);
 });
 next();

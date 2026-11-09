@@ -34,3 +34,35 @@ jobs:
         with:
           name: mission-control-render-results
           path: mission-control/render-results/
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Windows PowerShell 5.1 installer with mocked Pi transfer
+        shell: powershell
+        run: |
+          $errors = $null
+          $tokens = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD "mission-control\install.ps1"),
+            [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count) { throw ($errors | Out-String) }
+          function global:scp {
+            if (!(Test-Path -LiteralPath $args[-2])) { throw "Upload archive missing" }
+            Write-Host "MOCK SCP: no network transfer"
+            $global:LASTEXITCODE = 0
+          }
+          function global:ssh {
+            Write-Host "MOCK SSH: no Pi connection or deployment"
+            $global:LASTEXITCODE = 0
+          }
+          & .\mission-control\install.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mission-control-windows-render-report
+          path: mission-control/render-verification-result.html

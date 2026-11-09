@@ -3,6 +3,7 @@ import importlib.util
 import io
 import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ deploy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(deploy)
 
 
+@unittest.skipIf(os.name == 'nt', 'Pi symlink deployment is tested on Linux; Windows runs rendered UI checks')
 class DeployTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

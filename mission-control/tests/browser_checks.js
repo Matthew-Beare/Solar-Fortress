@@ -35,7 +35,6 @@ setTimeout(async()=>{
   check('observed mode '+want,got===want,got);
  }
  draw(base,{live:true,solarOk:true,controllerOk:true});layoutEnergyConnections();
- await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
  const front=document.querySelector('.multiplus-front').getBoundingClientRect();
  for(const e of document.querySelectorAll('.front-led-name')){
   const r=e.getBoundingClientRect();
