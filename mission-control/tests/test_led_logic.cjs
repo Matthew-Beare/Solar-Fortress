@@ -26,3 +26,5 @@ for(const [leds,connected,want] of [
  assert.equal(context.observedInverterMode({vebus_leds:leds,ac_connected:connected},{live:true}),want);checks++;
 }
 console.log('LED logic assertions passed: '+checks);
+
+require('./test_display_logic.cjs');

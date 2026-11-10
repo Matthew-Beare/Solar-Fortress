@@ -31,7 +31,7 @@ def main():
         match = re.search(r'<pre id="report">([\s\S]*?)</pre>', result.stdout)
         report = json.loads(match.group(1))
         assert report['fixtures'] == 25, report
-        assert report['checks'] >= 2500, report
+        assert report['checks'] >= 3000, report
         print(json.dumps(report, indent=2))
         (OUT/'summary.json').write_text(json.dumps(report, indent=2)+'\n')
         for name, width, height in [('inverting',1280,1450),('float',1280,1450),('inverting',390,1900)]:

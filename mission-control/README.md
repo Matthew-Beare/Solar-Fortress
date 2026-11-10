@@ -1,6 +1,12 @@
 # Mission Control UI 0.2.8
 
-Removes the redundant ordinary LED summary beneath INVERTING / PASS THROUGH.
+This release combines the requested display fixes:
+
+- Removes the redundant LED summary beneath INVERTING / PASS THROUGH.
+- Fits each overview graph's complete day into its card, with readable time labels and no sideways scrolling.
+- Shows the last SmartShunt-verified full-charge date and time in Eastern and counts down ten rolling elapsed days to the next request. Every new verified full event restarts that rolling clock. The one-hour maintenance window retains its existing fixed anchor.
+- Pins a tapped graph timestamp and its recorded reading through live refreshes and finger lift. Another tap changes the selection; reloading clears it.
+- Draws the busbar-to-inverter conductor as one straight segment and attaches the grid route to the visible cabinet.
 
 This replaces the v0.2.7 dashboard HTML after that release has been successfully installed. The charging policy is outside this UI update.
 

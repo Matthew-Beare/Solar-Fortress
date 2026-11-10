@@ -243,9 +243,9 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
 /* Mobile shows current hour first, historical hours remain scrollable. */
 .chart-scroll {overscroll-behavior-inline:contain}
 
-/* Mini charts are genuinely hourly, horizontally scrollable at all widths. */
-.mini-chart-scroll {width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#36566f transparent;overscroll-behavior-inline:contain;touch-action:pan-x}
-.flow-chart-area .plot .chart {display:block;width:840px !important;min-width:840px !important;max-width:none !important;height:205px !important;max-height:none !important;aspect-ratio:auto !important}
+/* Overview charts fit the complete day inside each card. */
+.mini-chart-scroll {width:100%;min-width:0;overflow:hidden}
+.flow-chart-area .plot .chart {display:block;width:100% !important;min-width:0 !important;max-width:100% !important;height:205px !important;max-height:none !important;aspect-ratio:auto !important}
 .flow-chart-area .plot .chart-axes .axis-label {font-size:10px !important}
 
 @media(min-width:741px){.mobile-flow-svg{width:min(100%,580px) !important;max-width:580px !important;max-height:none !important}}
@@ -289,6 +289,14 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
 @container(max-width:560px){.energy-map{grid-template-areas:"pv grid" "bus battery" "inverter inverter" "load load";gap:34px 20px;padding:12px 18px;margin-top:9px}.energy-node{padding:13px 12px}.energy-source{min-height:105px}.energy-title{font-size:9px;letter-spacing:.04em;gap:5px}.energy-title svg{width:16px;height:16px}.energy-value{font-size:25px}.energy-bus{min-height:134px}.energy-bus .energy-value{font-size:23px}.energy-sub{font-size:9px}.energy-battery-row{gap:7px}.battery-symbol{flex-basis:23px;width:23px;height:49px;padding:3px}.battery-symbol:before{left:5px;right:5px}.energy-battery .energy-value{font-size:24px}.energy-battery-watts{font-size:11px}.battery-state{font-size:8px;padding:4px}.energy-inverter{padding:0}.multiplus-cabinet{max-width:285px;padding:17px 16px 15px}.multiplus-brand{font-size:18px}.front-led-name{font-size:12px}.front-led-heading{font-size:10px}.front-led-row{min-height:25px;gap:8px}.physical-led{flex-basis:9px;width:9px;height:9px}.multiplus-model{font-size:22px}.energy-load{min-height:93px}.energy-load .energy-value{font-size:28px}.inverter-observed{padding-top:10px}.actual-mode{font-size:16px}}
 @media(max-width:360px){.energy-battery .battery-symbol{display:none}}
 @media(prefers-reduced-motion:reduce){.physical-led[data-led-state="2"],.physical-led[data-led-state="3"]{animation:none;outline:1px dashed #dcefff;outline-offset:2px}}
+
+
+/* The last verified charge and rolling request deadline are separate readings. */
+.maint-top{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);align-items:start;gap:16px}
+.maint-label{display:block;font-size:10px;line-height:1.4;letter-spacing:.06em;color:#99bfb6;text-transform:uppercase}
+.maint-last strong{display:block;margin-top:6px;font-size:16px;line-height:1.45;font-weight:750;color:#d8eee7;white-space:normal;letter-spacing:0}
+.maint-next{text-align:right}.maint-next strong{display:block;margin-top:6px;font-size:20px;white-space:normal}
+@container(max-width:560px){.maint-top{grid-template-columns:minmax(0,1fr);gap:12px}.maint-next{text-align:left}.maint-last strong{font-size:15px}.maint-next strong{font-size:19px}}
 
 </style></head>
 <body><div class="app" id="application">
@@ -359,7 +367,7 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
   <div class="energy-title">DC BUSBARS</div><span id="mobileBusVoltage" class="energy-value">-- V</span><span class="energy-sub">BATTERY VOLTAGE</span>
  </section>
  <section class="energy-node energy-inverter" id="energyInverter" aria-label="MultiPlus-II front panel">
-  <div class="multiplus-cabinet">
+  <div class="multiplus-cabinet" id="multiplusCabinet">
    <div class="multiplus-brand">victron energy<small>BLUE POWER</small></div>
    <div class="multiplus-front"><div class="front-led-columns"><div class="front-led-column"><div class="front-led-heading">charger</div><div class="front-led-row"><span id="ledMainsMobile" class="physical-led" data-led-key="Mains" data-led-state="unknown" role="img" aria-label="mains on: unknown"></span><span class="front-led-name">mains on</span></div><div class="front-led-row"><span id="ledBulkMobile" class="physical-led" data-led-key="Bulk" data-led-state="unknown" role="img" aria-label="bulk: unknown"></span><span class="front-led-name">bulk</span></div><div class="front-led-row"><span id="ledAbsorptionMobile" class="physical-led" data-led-key="Absorption" data-led-state="unknown" role="img" aria-label="absorption: unknown"></span><span class="front-led-name">absorption</span></div><div class="front-led-row"><span id="ledFloatMobile" class="physical-led" data-led-key="Float" data-led-state="unknown" role="img" aria-label="float: unknown"></span><span class="front-led-name">float</span></div></div><div class="front-led-column"><div class="front-led-heading">inverter</div><div class="front-led-row"><span id="ledInverterMobile" class="physical-led" data-led-key="Inverter" data-led-state="unknown" role="img" aria-label="inverter on: unknown"></span><span class="front-led-name">inverter on</span></div><div class="front-led-row"><span id="ledOverloadMobile" class="physical-led" data-led-key="Overload" data-led-state="unknown" role="img" aria-label="overload: unknown"></span><span class="front-led-name">overload</span></div><div class="front-led-row"><span id="ledLowBatteryMobile" class="physical-led" data-led-key="LowBattery" data-led-state="unknown" role="img" aria-label="low battery: unknown"></span><span class="front-led-name">low battery</span></div><div class="front-led-row"><span id="ledTemperatureMobile" class="physical-led" data-led-key="Temperature" data-led-state="unknown" role="img" aria-label="temperature: unknown"></span><span class="front-led-name">temperature</span></div></div></div></div>
    <div class="multiplus-model">MultiPlus-II<small>INVERTER / CHARGER</small></div><div class="multiplus-stripe"></div>
@@ -377,7 +385,7 @@ html,body{min-height:100%}body{background:radial-gradient(ellipse 82% 58% at 64%
 <div id="offlineOverlay" class="offline-overlay">TELEMETRY NOT CURRENT<br><small>No active flow inferred</small></div>
 <div class="flow-footer"><span id="latencyLabel">1s polling • awaiting data</span></div>
 <div class="maintenance-banner" id="maintenanceBanner" hidden>
- <div class="maint-top"><span id="maintenanceTitle">Full-charge maintenance</span><strong id="maintenanceCountdown">--:--:--</strong></div>
+ <div class="maint-top"><div class="maint-last"><span class="maint-label">Last full charge</span><strong id="maintenanceLastFull">UNKNOWN</strong></div><div class="maint-next"><span id="maintenanceTitle" class="maint-label">Next maintenance request</span><strong id="maintenanceCountdown">--</strong></div></div>
  <div class="maint-progress"><span id="maintenanceProgress"></span></div>
  <div class="maint-detail" id="maintenanceDetail">Awaiting controller state</div>
 </div>
@@ -462,7 +470,7 @@ const fmtW=(n)=>fmt(n,0,' W');
 const fmtKwh=(n)=>fmt(n,2,' kWh');
 const yesno=(x)=>x===true?'YES':x===false?'NO':'--';
 const dt=(ms,options)=>new Date(ms).toLocaleString('en-US',{timeZone:TZ,...options});
-function clock(){const now=Date.now();txt('dateDisplay',dt(now,{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase());txt('timeDisplay',dt(now,{hour:'numeric',minute:'2-digit',hour12:true}));}
+function clock(){if(sample)showMaintenance(sample);const now=Date.now();txt('dateDisplay',dt(now,{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase());txt('timeDisplay',dt(now,{hour:'numeric',minute:'2-digit',hour12:true}));}
 function duration(seconds){const n=num(seconds);if(n===null||n<0)return '--';
  const m=Math.floor(n/60),days=Math.floor(m/1440),hours=Math.floor(m%1440/60),mins=m%60;
  if(days)return `${days}d ${hours}h ago`;if(hours)return `${hours}h ${mins}m ago`;return `${mins}m ago`;
@@ -605,42 +613,75 @@ function asClock(seconds){
  const n=Math.max(0,Math.ceil(seconds)),h=Math.floor(n/3600),m=Math.floor(n%3600/60),ss=n%60;
  return [h,m,ss].map(v=>String(v).padStart(2,'0')).join(':');
 }
+
+// The deployed policy requests maintenance after ten elapsed days since the
+// SmartShunt's latest verified full event. The checkpoint is NOT the rolling
+// full-charge history; it records the maintenance cycle's fixed hold anchor.
+const MAINTENANCE_REQUEST_SECONDS=10*86400;
+function telemetryEpochMs(value){
+ if(typeof value!=='string')return null;
+ if(/T.*(?:Z|[+-][0-9]{2}:[0-9]{2})$/.test(value)){
+  const parsed=Date.parse(value);return Number.isFinite(parsed)?parsed:null;
+ }
+ // Exact format emitted by the verified Pi backend, with an explicit
+ // EST/EDT suffix so browser locale and DST ambiguity cannot change it.
+ const m=value.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{1,2}):([0-9]{2}):([0-9]{2}) (AM|PM) (EST|EDT)$/);
+ if(!m)return null;
+ const hour=Number(m[4])%12+(m[7]==='PM'?12:0);
+ const utc=Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),hour,Number(m[5]),Number(m[6]));
+ return utc+(m[8]==='EST'?5:4)*3600000;
+}
+function fullChargeTiming(d,nowMs=Date.now(),receivedMs=nowMs){
+ const raw=num(d.last_full_charge_seconds),snapshot=telemetryEpochMs(d.timestamp);
+ const elapsed=Math.max(0,(nowMs-receivedMs)/1000);
+ const age=raw!==null&&raw>=0?raw+elapsed:null;
+ return {ageSeconds:age,
+  lastFullMs:raw!==null&&raw>=0&&snapshot!==null?snapshot-raw*1000:null,
+  nowSeconds:snapshot===null?null:snapshot/1000+elapsed,
+  requestRemaining:age===null?null:Math.max(0,MAINTENANCE_REQUEST_SECONDS-age)};
+}
+function maintenanceRemaining(seconds){
+ if(seconds===null)return '--';
+ const n=Math.max(0,Math.ceil(seconds)),days=Math.floor(n/86400);
+ if(days)return days+'d '+Math.floor(n%86400/3600)+'h '+Math.floor(n%3600/60)+'m';
+ return asClock(n);
+}
 function showMaintenance(d){
- const m=d.maintenance,host=$('maintenanceBanner');if(!host)return;
- const soc=num(d.soc),seconds=num(d.last_full_charge_seconds);
- if(!m||!m.available){host.hidden=true;return;}
- const phase=m.phase;
- const fullAt=num(m.last_full_event_at);
- const fullLabel=fullAt&&fullAt>0?dt(fullAt*1000,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):null;
- const hold=phase==='hold',requested=phase==='requested';
- const recentlyFull=fullAt&&Date.now()-fullAt*1000<2*86400000;
- if(!hold&&!requested&&!recentlyFull){host.hidden=true;return;}
+ const host=$('maintenanceBanner');if(!host||!d)return;
+ const m=d.maintenance||{},timing=fullChargeTiming(d,Date.now(),receivedAt||Date.now());
+ const known=timing.ageSeconds!==null,fullAt=num(m.last_full_event_at);
  host.hidden=false;
- if(hold){
-  // One fixed 60-minute window, starting at the SmartShunt VERIFIED
-  // full-charge timestamp. This is not a timer of accumulated PV/AC minutes.
-  const observedAge=(fullAt&&fullAt>0)?Math.max(0,Date.now()/1000-fullAt):null;
-  const remaining=observedAge===null?null:Math.max(0,3600-observedAge);
-  const elapsed=observedAge===null?0:Math.min(3600,observedAge);
-  txt('maintenanceTitle','Verified full · one-hour window');
-  txt('maintenanceCountdown',remaining===null?'--:--:--':asClock(remaining));
-  $('maintenanceProgress').style.width=(100*elapsed/3600).toFixed(1)+'%';
-  const physical=observedInverterMode(d,{live:d.victron_connected===true&&!d.error});
-  txt('maintenanceDetail',(fullLabel?'SmartShunt confirmed '+fullLabel+' ET · ':'')+
-     (physical==='PASS THROUGH'?'AC feeding house':'Actual inverter: '+physical)+
-     ' · returns to battery-first at end of window');
- }else if(requested){
-  txt('maintenanceTitle','Full-charge maintenance');
-  const deadline=num(m.deadline_at);
-  const remaining=deadline?Math.max(0,deadline*1000-Date.now())/1000:null;
-  txt('maintenanceCountdown',remaining===null?'--':remaining>0?asClock(remaining):'DAY 14');
+ txt('maintenanceLastFull',timing.lastFullMs===null?'UNKNOWN':
+  dt(timing.lastFullMs,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})+' ET');
+ if(!m.available){
+  txt('maintenanceTitle','Next maintenance request');txt('maintenanceCountdown','--');
   $('maintenanceProgress').style.width='0%';
-  txt('maintenanceDetail',soc===100&&(!seconds||seconds>3600)?'100% displayed · awaiting SmartShunt verification':
-      remaining!==null&&remaining>0?'Solar priority · grid assists at day 14':'Grid charging due · awaiting verified full charge');
+  txt('maintenanceDetail','Maintenance status unavailable');return;
+ }
+ if(m.phase==='hold'){
+  // Preserve the existing fixed one-hour anchor, even if a later SmartShunt
+  // full event resets the separate ten-day rolling history.
+  const age=fullAt!==null&&fullAt>0&&timing.nowSeconds!==null?Math.max(0,timing.nowSeconds-fullAt):null;
+  const remaining=age===null?null:Math.max(0,3600-age);
+  txt('maintenanceTitle','Maintenance window remaining');
+  txt('maintenanceCountdown',maintenanceRemaining(remaining));
+  $('maintenanceProgress').style.width=(remaining===null?0:100*remaining/3600).toFixed(1)+'%';
+  txt('maintenanceDetail','Verified full-charge maintenance window; returns to battery-first when it ends');
+ }else if(m.phase==='requested'){
+  const deadline=num(m.deadline_at);
+  const remaining=deadline!==null&&timing.nowSeconds!==null?Math.max(0,deadline-timing.nowSeconds):null;
+  txt('maintenanceTitle','Maintenance request active');
+  txt('maintenanceCountdown',remaining===null?'REQUESTED':remaining>0?'REQUESTED':'GRID BACKUP DUE');
+  $('maintenanceProgress').style.width='0%';
+  txt('maintenanceDetail',remaining===null?'Awaiting a new SmartShunt-verified full charge':
+   remaining>0?'Solar priority; grid-charge deadline in '+maintenanceRemaining(remaining):
+   'Grid-charge deadline reached; awaiting a new verified full charge');
  }else{
-  txt('maintenanceTitle','Full-charge maintenance complete');txt('maintenanceCountdown','DONE');
-  $('maintenanceProgress').style.width='100%';
-  txt('maintenanceDetail',fullLabel?'SmartShunt verified '+fullLabel+' ET':'Verified top-off completed');
+  txt('maintenanceTitle','Next maintenance request');
+  txt('maintenanceCountdown',!known?'--':timing.requestRemaining>0?maintenanceRemaining(timing.requestRemaining):'DUE');
+  $('maintenanceProgress').style.width=(known?100*timing.requestRemaining/MAINTENANCE_REQUEST_SECONDS:0).toFixed(1)+'%';
+  txt('maintenanceDetail',known?'Rolling 10 days from the latest SmartShunt-verified full charge':
+   'SmartShunt full-charge history unavailable');
  }
 }
 
@@ -668,14 +709,14 @@ function layoutEnergyConnections(){
  const origin=map.getBoundingClientRect();
  if(!origin.width||!origin.height)return;
  const box=id=>{const r=$(id).getBoundingClientRect();return {x:r.left-origin.left,y:r.top-origin.top,w:r.width,h:r.height};};
- const pv=box('energyPv'),grid=box('energyGrid'),bus=box('energyBus'),inv=box('energyInverter'),battery=box('energyBattery'),load=box('energyLoad');
+ const pv=box('energyPv'),grid=box('energyGrid'),bus=box('energyBus'),inv=box('energyInverter'),cabinet=box('multiplusCabinet'),battery=box('energyBattery'),load=box('energyLoad');
  const point=(r,side)=>side==='top'?[r.x+r.w/2,r.y]:side==='bottom'?[r.x+r.w/2,r.y+r.h]:side==='left'?[r.x,r.y+r.h/2]:[r.x+r.w,r.y+r.h/2];
  const vertical=(a,b)=>'M'+a[0]+' '+a[1]+' V'+(a[1]+b[1])/2+' H'+b[0]+' V'+b[1];
  const horizontal=(a,b)=>'M'+a[0]+' '+a[1]+' H'+(a[0]+b[0])/2+' V'+b[1]+' H'+b[0];
  const narrow=inv.y>bus.y+bus.h/2;
- const gridPath=narrow?(()=>{const a=point(grid,'right'),b=point(inv,'right'),rail=origin.width-5;return 'M'+a[0]+' '+a[1]+' H'+rail+' V'+b[1]+' H'+b[0];})():vertical(point(grid,'bottom'),point(inv,'top'));
+ const gridPath=narrow?(()=>{const a=point(grid,'right'),b=point(cabinet,'right'),rail=origin.width-5;return 'M'+a[0]+' '+a[1]+' H'+rail+' V'+b[1]+' H'+b[0];})():vertical(point(grid,'bottom'),point(cabinet,'top'));
  const paths={Pv:vertical(point(pv,'bottom'),point(bus,'top')),Grid:gridPath,
-  Dc:narrow?vertical(point(bus,'bottom'),[inv.x+inv.w*.25,inv.y]):horizontal(point(bus,'right'),point(inv,'left')),
+  Dc:narrow?'M'+(bus.x+bus.w/2)+' '+(bus.y+bus.h)+' V'+cabinet.y:'M'+(bus.x+bus.w)+' '+(bus.y+bus.h/2)+' H'+cabinet.x,
   Battery:narrow?horizontal(point(battery,'left'),point(bus,'right')):vertical(point(battery,'top'),point(bus,'bottom')),
   House:vertical(point(inv,'bottom'),point(load,'top'))};
  for(const key of Object.keys(paths)){
@@ -951,23 +992,26 @@ function axisText(group,label,x,y,anchor='start',cls='axis-label'){
  const el=document.createElementNS('http://www.w3.org/2000/svg','text');el.setAttribute('x',String(x));el.setAttribute('y',String(y));
  el.setAttribute('text-anchor',anchor);el.setAttribute('class',cls);el.textContent=label;group.appendChild(el);return el;
 }
+
 function drawHourTicks(group,b,window,compact=false){
  const [left,top,width,height]=b;
  const start=window.start,end=window.end,span=Math.max(1,end-start);
- // Eastern hour boundaries are actual UTC hour instants, respecting DST folds/skips.
  const first=Math.ceil(start/3600000)*3600000;
- for(let ms=first;ms<=end;ms+=3600000){
+ const hours=span/3600000,minimum=38;
+ const every=compact?([1,2,3,4,6,12,24].find(step=>width/hours*step>=minimum)||24):1;
+ let index=0;
+ for(let ms=first;ms<=end;ms+=3600000,index++){
   const x=left+(ms-start)/span*width;
   axisLine(group,{x1:x,y1:top,x2:x,y2:top+height},'axis-time');
+  if(compact&&index%every!==0&&ms!==end)continue;
+  if(!compact&&ms===end&&window.today)continue;
   const hour=dt(ms,{hour:'numeric',hour12:true}).replace(/\s?(AM|PM)/,'$1');
   const label=compact?hour.replace('AM','a').replace('PM','p'):hour;
-  if(ms===end&&window.today)continue; // next midnight belongs to tomorrow
-  if(compact){
-    const node=axisText(group,label,x,top+height+17,'end','axis-label');
-    node.setAttribute('transform',`rotate(-58 ${x} ${top+height+16})`);
-  }else axisText(group,label,x,top+height+21,'middle','axis-label');
+  const anchor=compact?(ms===first?'start':ms===end?'end':'middle'):'middle';
+  axisText(group,label,x,top+height+21,anchor,'axis-label');
  }
 }
+
 function drawAxes(groupId,metric,points,lim,b,window){
  const group=$(groupId);group.replaceChildren();const [left,top,width,height]=b;
  for(let i=0;i<=8;i++){
@@ -977,26 +1021,30 @@ function drawAxes(groupId,metric,points,lim,b,window){
  }
  drawHourTicks(group,b,window,true);
 }
-function renderMiniCharts(){for(const [metric,id] of [['solar','solar'],['soc','soc'],['load','load']]){
- const window=plotWindow('today'),pts=filtered(metric,'today');const lim=limits(pts,metric),box=[56,10,750,134];
- const pair=makeSeries(pts,box,lim,120,window);
- drawAxes(id+'Axes',metric,pts,lim,box,window);
-  const host=$(id+'Chart')?.closest('.mini-chart-scroll');
-  if(host){const key=String(window.start);
-   if(host.dataset.date!==key){host.dataset.date=key;host.dataset.didScroll='';}
-   if(!host.dataset.didScroll){
-    const now=Math.max(window.start,Math.min(window.end,Date.now()));
-    host.scrollLeft=Math.max(0,(now-window.start)/(window.end-window.start)*host.scrollWidth-host.clientWidth*.7);
-    host.dataset.didScroll='1';
-   }
-  }
- $(id+'Empty').style.display=pair?'none':'block';
- $(id+'Chart').setAttribute('d',pair?.line||'');$(id+'Area').setAttribute('d',pair?.area||'');
- $(id+'Dot').setAttribute('opacity',pair?'1':'0');
- if(pair){$(id+'Dot').setAttribute('cx',String(pair.last.x));$(id+'Dot').setAttribute('cy',String(pair.last.y));}
- txt(id+'Start',pts.length?dt(pts[0].t,{hour:'numeric',minute:'2-digit'}):'--');
-}}
+
+function renderMiniCharts(){
+ for(const [metric,id] of [['solar','solar'],['soc','soc'],['load','load']]){
+  const line=$(id+'Chart'),svg=line?.ownerSVGElement,host=line?.closest('.mini-chart-scroll');
+  if(!svg||!host||host.clientWidth<=0)continue;
+  const width=Math.max(1,Math.floor(host.clientWidth)),height=205;
+  svg.setAttribute('viewBox','0 0 '+width+' '+height);
+  const window=plotWindow('today'),pts=filtered(metric,'today'),lim=limits(pts,metric);
+  const box=[48,10,Math.max(1,width-62),154];
+  const pair=makeSeries(pts,box,lim,120,window);
+  drawAxes(id+'Axes',metric,pts,lim,box,window);
+  host.scrollLeft=0;
+  const empty=$(id+'Empty');empty.style.display=pair?'none':'block';
+  empty.setAttribute('x',String(box[0]+box[2]/2));empty.setAttribute('y',String(box[1]+box[3]/2));
+  line.setAttribute('d',pair?.line||'');$(id+'Area').setAttribute('d',pair?.area||'');
+  $(id+'Dot').setAttribute('opacity',pair?'1':'0');
+  if(pair){$(id+'Dot').setAttribute('cx',String(pair.last.x));$(id+'Dot').setAttribute('cy',String(pair.last.y));}
+  txt(id+'Start',pts.length?dt(pts[0].t,{hour:'numeric',minute:'2-digit'}):'--');
+ }
+}
+
 let explorerAutoScroll=true;
+// Page-local selection: live refreshes preserve it; reloading clears it.
+let explorerSelection=null;
 function renderExplorer(){
  const metric=$('metricSelect').value,range=$('rangeSelect').value;
  const window=plotWindow(range),pts=filtered(metric,range);
@@ -1028,22 +1076,21 @@ function renderExplorer(){
    axisText(group,dt(ms,{hour:'numeric',minute:'2-digit'}),x,b[1]+b[3]+36,'middle','axis-label');
   }
  }
- const full=sample?.maintenance?.last_full_event_at;
+ const full=sample?fullChargeTiming(sample,Date.now(),receivedAt||Date.now()).lastFullMs:null;
  if(Number.isFinite(full)&&full>0){
-  const ms=full*1000;
+  const ms=full;
   if(ms>=window.start&&ms<=window.end){
    const x=b[0]+(ms-window.start)/(window.end-window.start)*b[2];
    axisLine(group,{x1:x,y1:b[1],x2:x,y2:b[1]+b[3]},'full-marker');
    axisText(group,'FULL ✓',Math.min(b[0]+b[2]-39,Math.max(b[0]+30,x)),b[1]+14,'middle','full-marker-text');
   }
  }
- const selected=$('plotHit')._selectedTime;
  $('explorerCrosshair').setAttribute('opacity','0');$('explorerPoint').setAttribute('opacity','0');
  const valid=pts.filter(p=>p.v!==null&&Number.isFinite(p.v));
  txt('plotHoverText',valid.length?`Latest · ${dt(valid[valid.length-1].t,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · ${fmt(valid[valid.length-1].v,metric==='soc'?1:0,' '+m.unit)} · tap a point to inspect`:'No samples in the selected period');
  renderStamp++;$('explorerPlot')._series={pts,lim,metric,box:b,window,stamp:renderStamp};
- if(selected!==undefined&&valid.length&&selected>=window.start&&selected<=window.end)showHoverAtTime(selected);
- if(explorerAutoScroll&&mobile&&view==='analytics'&&valid.length){
+ if(explorerSelection)paintExplorerPoint(explorerSelection,true);
+ if(explorerAutoScroll&&mobile&&view==='analytics'&&valid.length&&!explorerSelection){
   const scroll=$('chartScroll');
   // On mobile begin near the latest data, but permit scrolling back to midnight.
   const last=valid.length?valid[valid.length-1].t:Date.now();
@@ -1053,26 +1100,44 @@ function renderExplorer(){
  }
 }
 function windowMatch(query){return !!(window.matchMedia&&window.matchMedia(query).matches);}
-function showHover(e){
+
+function showHover(e,pin=false){
  const s=$('explorerPlot')._series;if(!s||!s.pts.length)return;
  const rect=$('explorerPlot').getBoundingClientRect(),b=s.box;
  let x=(e.clientX-rect.left)/rect.width*$('explorerPlot').viewBox.baseVal.width;
  x=Math.max(b[0],Math.min(b[0]+b[2],x));
- showHoverAtTime(s.window.start+(x-b[0])/b[2]*(s.window.end-s.window.start));
+ showHoverAtTime(s.window.start+(x-b[0])/b[2]*(s.window.end-s.window.start),pin);
 }
-function showHoverAtTime(time){
+function paintExplorerPoint(point,pinned=false){
  const s=$('explorerPlot')._series;if(!s)return;
- const b=s.box,valid=s.pts.filter(p=>p.v!==null);if(!valid.length)return;
- const near=valid.reduce((best,p)=>Math.abs(p.t-time)<Math.abs(best.t-time)?p:best);
- const cx=b[0]+(near.t-s.window.start)/(s.window.end-s.window.start)*b[2];
- const cy=b[1]+b[3]-(near.v-s.lim.min)/(s.lim.max-s.lim.min)*b[3];
+ const b=s.box,value=num(point[s.metric]),inside=point.t>=s.window.start&&point.t<=s.window.end;
+ const cx=b[0]+(point.t-s.window.start)/(s.window.end-s.window.start)*b[2];
  $('explorerCrosshair').setAttribute('x1',cx);$('explorerCrosshair').setAttribute('x2',cx);
  $('explorerCrosshair').setAttribute('y1',b[1]);$('explorerCrosshair').setAttribute('y2',b[1]+b[3]);
- $('explorerCrosshair').setAttribute('opacity','1');
- $('explorerPoint').setAttribute('cx',cx);$('explorerPoint').setAttribute('cy',cy);$('explorerPoint').setAttribute('opacity','1');
- txt('plotHoverText',`${dt(near.t,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'})}  ·  ${METRICS[s.metric].label}: ${fmt(near.v,s.metric==='soc'?1:0,' '+METRICS[s.metric].unit)}`);
- $('plotHit')._selectedTime=near.t;
+ $('explorerCrosshair').setAttribute('opacity',inside?'1':'0');
+ const visible=inside&&value!==null&&value>=s.lim.min&&value<=s.lim.max;
+ $('explorerPoint').setAttribute('opacity',visible?'1':'0');
+ if(visible){
+  const cy=b[1]+b[3]-(value-s.lim.min)/(s.lim.max-s.lim.min)*b[3];
+  $('explorerPoint').setAttribute('cx',cx);$('explorerPoint').setAttribute('cy',cy);
+ }
+ const m=METRICS[s.metric];
+ txt('plotHoverText',(pinned?'Selected · ':'')+
+  dt(point.t,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'})+
+  ' · '+m.label+': '+(value===null?'No reading':fmt(value,s.metric==='soc'?1:0,' '+m.unit))+
+  (!inside?' · outside displayed period':''));
+ $('plotHit')._selectedTime=point.t;
 }
+function showHoverAtTime(time,pin=false){
+ const s=$('explorerPlot')._series;if(!s)return;
+ const valid=s.pts.filter(p=>p.v!==null&&Number.isFinite(p.v));if(!valid.length)return;
+ const near=valid.reduce((best,p)=>Math.abs(p.t-time)<Math.abs(best.t-time)?p:best);
+ const row=history.find(p=>p.t===near.t);
+ const point={...(row||{}),t:near.t,[s.metric]:near.v};
+ if(pin)explorerSelection={...point};
+ paintExplorerPoint(point,pin);
+}
+
 function draw(d,h){renderPower(d,h);renderMppts(d);renderDetail(d);
  monitorChange('mode',d.mode,'Operating mode');monitorChange('ac',d.ac_connected,'AC connected');
  monitorChange('controller',d.controller_running,'Controller');monitorChange('victron',d.victron_connected,'Victron');
@@ -1123,17 +1188,21 @@ $('openAnalytics').addEventListener('click',()=>setView('analytics'));
 $('backOverview').addEventListener('click',()=>setView('overview'));
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>setView(el.dataset.view)));
 $('metricSelect').addEventListener('change',renderExplorer);$('rangeSelect').addEventListener('change',renderExplorer);
-$('plotHit').addEventListener('pointermove',showHover);
-$('plotHit').addEventListener('pointerdown',showHover);
+$('plotHit').addEventListener('pointermove',e=>{if(!explorerSelection&&e.pointerType!=='touch')showHover(e);});
+$('plotHit').addEventListener('pointerdown',e=>showHover(e,true));
 $('plotHit').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
  e.preventDefault();const s=$('explorerPlot')._series;if(!s)return;const list=s.pts.filter(p=>p.v!==null);if(!list.length)return;
  const prev=$('plotHit')._selectedTime??list[list.length-1].t;let index=list.findIndex(p=>p.t>=prev);if(index<0)index=list.length-1;
  if(e.key==='Home')index=0;else if(e.key==='End')index=list.length-1;else index=Math.max(0,Math.min(list.length-1,index+(e.key==='ArrowLeft'?-1:1)));
- showHoverAtTime(list[index].t);});
+ showHoverAtTime(list[index].t,true);});
 window.addEventListener('resize',()=>{renderMiniCharts();renderExplorer();layoutEnergyConnections();});
-$('plotHit').addEventListener('pointerleave',()=>{$('explorerCrosshair').setAttribute('opacity','0');$('explorerPoint').setAttribute('opacity','0');});
+$('plotHit').addEventListener('pointerleave',()=>{if(explorerSelection)return;$('explorerCrosshair').setAttribute('opacity','0');$('explorerPoint').setAttribute('opacity','0');});
 layoutEnergyConnections();
-if(typeof ResizeObserver==='function')new ResizeObserver(layoutEnergyConnections).observe($('energyMap'));
+if(typeof ResizeObserver==='function'){
+ new ResizeObserver(layoutEnergyConnections).observe($('energyMap'));
+ const chartObserver=new ResizeObserver(()=>renderMiniCharts());
+ for(const host of document.querySelectorAll('.mini-chart-scroll'))chartObserver.observe(host);
+}
 clock();renderHealth(healthState());renderMiniCharts();renderExplorer();
 restorePersistentHistory();
 poll();setInterval(poll,1000);setInterval(()=>{clock();renderHealth(healthState());},1000);

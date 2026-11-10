@@ -16,7 +16,7 @@ def fixtures():
                 solar_seven_day_yield=7.4, solar_chargers=[], ac_input_power=0,
                 ac_output_power=198, ac_connected=False, ac_present=True,
                 mode='BATTERY FIRST', grid_charging=False, ac_policy='battery_first',
-                last_full_charge_seconds=5300, maintenance={'phase': 'idle'},
+                last_full_charge_seconds=5300, maintenance={'phase': 'idle', 'available': True, 'last_full_event_at': 0},
                 runtime='4d 3h', daylight='10h 26m', peak_sun_hours=2.7,
                 telemetry_history_error=None)
     result = {}
@@ -55,7 +55,13 @@ def generate():
     data = script_json(fixtures())
     common = """
 function fixturePage(source,d){
- const prefix='<script>window.fetch=async function(url){return {ok:true,json:async()=>String(url).includes("/api/status")?({...'+JSON.stringify(d)+',timestamp:new Date().toISOString()}):({source:"pi-sqlite",records:[],samples:[]})};};<\\/script>';
+ const now=Date.now(),samples=[];
+ const offsetName=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(now)).find(p=>p.type==='timeZoneName')?.value||'GMT';
+ const offsetMatch=offsetName.match(/GMT([+-])([0-9]{1,2})(?::([0-9]{2}))?/);
+ const offset=offsetMatch?(offsetMatch[1]==='-'?-1:1)*(Number(offsetMatch[2])*60+Number(offsetMatch[3]||0))*60000:0;
+ for(let i=2880;i>=0;i--){const t=now-i*30000,h=((t+offset)/3600000%24+24)%24;
+  samples.push({t,solar:Math.round(Math.max(0,Math.sin((h-6)/12*Math.PI))*640),soc:78+12*Math.sin((h-10)/24*Math.PI*2),load:Math.floor(h)%3===0?210:55,grid:0,battery:-225});}
+ const prefix='<script>window.fetch=async function(url){return {ok:true,json:async()=>String(url).includes("/api/status")?({...'+JSON.stringify(d)+',timestamp:new Date().toISOString()}):({source:"pi-sqlite",server_time_ms:'+now+',samples:'+JSON.stringify(samples)+'})};};<\\/script>';
  return source.replace('<script>',prefix+'<script>');
 }
 """
