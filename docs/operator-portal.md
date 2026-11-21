@@ -40,13 +40,16 @@ The portal preserves unrelated JSON keys while editing:
 - Full-charge maintenance interval (default 10 days)
 - Retry request interval (default 4 days)
 - Storm Mode enabled/disabled, immediate storm-onset lookahead (default 12 hours)
-- Early Storm Watch lead (default 48 hours, configurable 12 to 120 hours)
+- Early Storm Watch lead (default 48 hours, configurable 1 to 120 hours; 8 works)
 - Forecast comparison delay (default 24 hours, configurable 1 to 48 hours)
-- Charge-time safety margin (default 4 hours, configurable 0 to 48 hours)
+- Charge-time safety margin (default 4 hours, configurable 0 to 48 hours; 8 works independently)
 - Snow and ice accumulation evaluation period (default rolling 24 hours), separate from warning lead
 - Forecast check interval (default 15 minutes; editable 5 to 120 minutes)
+- Immediate forecast horizon (default 24 hours, independently editable)
+- Severe ice override: 0.50 inches in the immediate forecast horizon (editable)
+- Optional severe snow and wind overrides, each editable or disabled
 - Per-condition snow (6 in), ice (0.25 in), wind (disabled by default)
-- Storm target 100%, storm reserve 90% stored as policy defaults
+- Storm target SOC 100% and storm reserve SOC 90%, each editable inside validated bounds
 
 The policy stage evaluates the forward-looking accumulation window each time it
 is called. It does NOT automatically poll NWS every 15 minutes yet. That
@@ -62,10 +65,16 @@ onset against a snapshot taken at least 24 hours earlier. Confirmation
 requires distinct official NWS updateTime values; merely rereading a cached
 forecast is not independent confirmation.
 
-The planner recommends a charge when the event is confirmed OR if a conservative
-minimum charging-time estimate plus the configured margin reaches the time to
-forecast onset. Thus it may recommend charging before 24-hour confirmation
-when waiting would risk an undercharged battery. This is still advisory code.
+Historical confirmation is informational, never a prerequisite for charging.
+The planner reevaluates the freshest weather, latest SOC, and attainable charger
+current every time it runs. It recommends charging if: (1) severe ice reaches
+0.50 inches within the next 24 hours (or another enabled urgent threshold),
+(2) a qualified event has persisted in different NWS forecast revisions,
+or (3) time to onset is less than or equal to estimated charging duration
+plus the editable four-hour margin. A 14-hour charging estimate creates an
+18-hour planning deadline with a four-hour buffer and a 22-hour deadline
+with an eight-hour buffer. A narrow watch length cannot block the urgent
+24-hour forecast override. This remains advisory code.
 NWS source accuracy, charger capabilities, available AC and SmartShunt data
 must be verified before implementing a real state-changing request.
 
@@ -94,3 +103,7 @@ replenish 40% to 100% SOC, before absorption taper and concurrent loads.
 - Use dry-run decisions and controlled tests before any automatic actuator.
 - The Pi must continue safely without GREPmox, Internet, WireGuard or this
   portal; any server-issued request needs authenticated, narrow Pi validation.
+
+Master storm disable is authoritative: it turns off severe overrides too.
+Configuration is not applied to the real Pi until a separate validated
+integration and hardware test. Safety/BMS/inverter limits are not GUI knobs.
