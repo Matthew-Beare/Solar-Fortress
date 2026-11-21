@@ -126,7 +126,8 @@ def parse_settings(form, original):
                 "learning_poll_seconds"):
         charge[key] = int(form[key][0])
     for key in ("learning_soc_match_percent", "learning_conservative_multiplier",
-                "learning_min_charge_current_amps", "learning_min_soc_gain_percent"):
+                "learning_min_charge_current_amps", "learning_min_soc_gain_percent",
+                "learning_taper_min_soc_percent", "learning_taper_min_current_amps"):
         charge[key] = float(form[key][0])
     merged["charge_estimate"] = charge
     current = validate_config(original)["storm"]
@@ -255,6 +256,8 @@ def make_handler(config_path, auth_path):
                     field("learning_sample_interval_seconds", charge["learning_sample_interval_seconds"]),
                     field("learning_poll_seconds", charge["learning_poll_seconds"]),
                     field("learning_min_charge_current_amps", charge["learning_min_charge_current_amps"], step="0.1"),
+                    field("learning_taper_min_soc_percent", charge["learning_taper_min_soc_percent"], step="0.1"),
+                    field("learning_taper_min_current_amps", charge["learning_taper_min_current_amps"], step="0.1"),
                     field("learning_min_soc_gain_percent", charge["learning_min_soc_gain_percent"], step="0.1"),
                     '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
