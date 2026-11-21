@@ -18,7 +18,6 @@ import urllib.parse
 import urllib.request
 
 UTC = dt.timezone.utc
-USER_AGENT = "Solar-Fortress/0.1 (local-read-only-energy-controller)"
 MAX_BODY = 2 * 1024 * 1024
 DURATION = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$")
 ALERT_TERMS = ("winter", "ice", "freez", "snow", "blizzard",
@@ -30,7 +29,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError("Refusing NWS HTTP redirect")
 
 
-def get_json(url):
+def get_json(url, user_agent):
+    if not isinstance(user_agent, str) or not user_agent or "\\n" in user_agent or "\\r" in user_agent:
+        raise ValueError("NWS requires a configured app/contact User-Agent")
     target = urllib.parse.urlsplit(url)
     if (target.scheme != "https" or target.hostname != "api.weather.gov"
             or target.username or target.password):
@@ -39,7 +40,7 @@ def get_json(url):
         urllib.request.ProxyHandler({}), NoRedirect()
     )
     request = urllib.request.Request(url, headers={
-        "User-Agent": USER_AGENT, "Accept": "application/geo+json",
+        "User-Agent": user_agent, "Accept": "application/geo+json",
     })
     with opener.open(request, timeout=12) as response:
         if response.status != 200:
@@ -141,7 +142,11 @@ def active_winter_alerts(payload, now):
     }
 
 
-def fetch_weather(latitude, longitude, now=None, fetch=get_json):
+def fetch_weather(latitude, longitude, now=None, fetch=None, user_agent=None):
+    if fetch is None:
+        if user_agent is None:
+            raise ValueError("Configure NWS app/contact User-Agent in the protected GUI")
+        fetch = lambda url: get_json(url, user_agent)
     if (isinstance(latitude, bool) or isinstance(longitude, bool)
             or not isinstance(latitude, (float, int))
             or not isinstance(longitude, (float, int))
