@@ -102,10 +102,17 @@ def parse_settings(form, original):
         "grid_pass_through": float(form["grid_pass_through"][0]),
         "battery_return": float(form["battery_return"][0]),
     }
+    merged["qualification_seconds"] = {
+        **merged.get("qualification_seconds", {}),
+        "pass_through": int(form["pass_through_qualification_seconds"][0]),
+        "grid_charge": int(form["grid_charge_qualification_seconds"][0]),
+        "stop_grid_charge": int(form["stop_grid_charge_qualification_seconds"][0]),
+    }
     merged["maintenance"] = {
         **merged.get("maintenance", {}),
         "full_charge_interval_days": int(form["full_charge_interval_days"][0]),
         "request_repeat_days": int(form["request_repeat_days"][0]),
+        "post_full_hold_minutes": int(form["post_full_hold_minutes"][0]),
     }
     current = validate_config(original)["storm"]
     storm = {**current}
@@ -196,7 +203,8 @@ def make_handler(config_path, auth_path):
                 return ('<label><input type="checkbox" name="' + name + '"' +
                         (' checked' if enabled else '') + '> ' + name.replace("_", " ").title() +
                         '</label><p></p>')
-            soc, maint, storm = settings["soc_thresholds"], settings["maintenance"], settings["storm"]
+            soc, qual, maint, storm = (settings["soc_thresholds"], settings["qualification_seconds"],
+                                      settings["maintenance"], settings["storm"])
             page = ['<!doctype html><meta charset="utf-8"><title>Solar Fortress settings</title>',
                     '<style>body{font:1rem system-ui;max-width:40rem;margin:2rem auto;padding:1rem}input{padding:.35rem}button{padding:.6rem 1rem}fieldset{margin:1rem 0}</style>',
                     '<h1>Solar Fortress operator settings</h1>',
@@ -206,9 +214,14 @@ def make_handler(config_path, auth_path):
                     field("grid_charge", soc["grid_charge"], step="0.1"),
                     field("grid_pass_through", soc["grid_pass_through"], step="0.1"),
                     field("battery_return", soc["battery_return"], step="0.1"), '</fieldset>',
+                    '<fieldset><legend>SOC change qualifications (seconds)</legend>',
+                    field("pass_through_qualification_seconds", qual["pass_through"]),
+                    field("grid_charge_qualification_seconds", qual["grid_charge"]),
+                    field("stop_grid_charge_qualification_seconds", qual["stop_grid_charge"]), '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
                     field("full_charge_interval_days", maint["full_charge_interval_days"]),
-                    field("request_repeat_days", maint["request_repeat_days"]), '</fieldset>',
+                    field("request_repeat_days", maint["request_repeat_days"]),
+                    field("post_full_hold_minutes", maint["post_full_hold_minutes"]), '</fieldset>',
                     '<fieldset><legend>Storm Mode (staged, not actuating)</legend>',
                     check("storm_enabled", storm["enabled"]),
                     field("lookahead_hours", storm["lookahead_hours"]),
