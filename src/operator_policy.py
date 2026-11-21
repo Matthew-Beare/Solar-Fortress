@@ -33,6 +33,8 @@ DEFAULTS = {
         "learning_sample_interval_seconds": 60,
         "learning_poll_seconds": 60,
         "learning_min_charge_current_amps": 1.0,
+        "learning_taper_min_soc_percent": 95.0,
+        "learning_taper_min_current_amps": -2.0,
         "learning_min_soc_gain_percent": 5.0,
     },
     "maintenance": {
@@ -150,8 +152,12 @@ def validate_config(raw):
         ("learning_conservative_multiplier", 1.0, 3.0),
         ("learning_min_charge_current_amps", 0.1, 100.0),
         ("learning_min_soc_gain_percent", 0.1, 50.0),
+        ("learning_taper_min_soc_percent", 80.0, 100.0),
+        ("learning_taper_min_current_amps", -50.0, 10.0),
     ):
         charge[field] = number(charge[field], field, low, high)
+    if charge["learning_taper_min_current_amps"] > charge["learning_min_charge_current_amps"]:
+        raise ValueError("Taper minimum current cannot exceed normal charging minimum")
     if charge["learning_min_sessions"] > charge["learning_history_sessions"]:
         raise ValueError("Learning minimum cannot exceed history sessions")
     out["charge_estimate"] = charge
