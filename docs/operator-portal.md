@@ -39,9 +39,18 @@ The portal preserves unrelated JSON keys while editing:
 - Emergency grid charge, pass-through and battery return SOC thresholds
 - Full-charge maintenance interval (default 10 days)
 - Retry request interval (default 4 days)
-- Storm Mode enabled/disabled, forecast lookahead (default 12 hours)
+- Storm Mode enabled/disabled, storm-onset lookahead (default 12 hours)
+- Snow and ice accumulation evaluation period (default rolling 24 hours), separate from the warning lead
+- Forecast check interval (default 15 minutes; editable 5 to 120 minutes)
 - Per-condition snow (6 in), ice (0.25 in), wind (disabled by default)
 - Storm target 100%, storm reserve 90% stored as policy defaults
+
+The policy stage evaluates the forward-looking accumulation window each time it
+is called. It does NOT automatically poll NWS every 15 minutes yet. That
+scheduler belongs on the Boomer HQ telemetry server and still needs to be
+deployed, then linked to this configuration without granting uncontrolled
+hardware access. A positive accumulation forecast that begins after the lead
+horizon must not trigger merely because a 24-hour total is high.
 
 The portal writes settings atomically and attempts to preserve existing file
 owner and mode. It does not restart the controller. The current public
