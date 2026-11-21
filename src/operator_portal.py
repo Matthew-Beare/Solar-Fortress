@@ -114,6 +114,12 @@ def parse_settings(form, original):
         "request_repeat_days": int(form["request_repeat_days"][0]),
         "post_full_hold_minutes": int(form["post_full_hold_minutes"][0]),
     }
+    charge = dict(merged.get("charge_estimate", {}))
+    for key in ("battery_capacity_ah", "planning_dc_charge_amps"):
+        raw = form[key][0].strip()
+        charge[key] = float(raw) if raw else None
+    charge["finishing_allowance_minutes"] = int(form["finishing_allowance_minutes"][0])
+    merged["charge_estimate"] = charge
     current = validate_config(original)["storm"]
     storm = {**current}
     storm["enabled"] = "storm_enabled" in form
@@ -203,8 +209,9 @@ def make_handler(config_path, auth_path):
                 return ('<label><input type="checkbox" name="' + name + '"' +
                         (' checked' if enabled else '') + '> ' + name.replace("_", " ").title() +
                         '</label><p></p>')
-            soc, qual, maint, storm = (settings["soc_thresholds"], settings["qualification_seconds"],
-                                      settings["maintenance"], settings["storm"])
+            soc, qual, maint, storm, charge = (settings["soc_thresholds"],
+                settings["qualification_seconds"], settings["maintenance"],
+                settings["storm"], settings["charge_estimate"])
             page = ['<!doctype html><meta charset="utf-8"><title>Solar Fortress settings</title>',
                     '<style>body{font:1rem system-ui;max-width:40rem;margin:2rem auto;padding:1rem}input{padding:.35rem}button{padding:.6rem 1rem}fieldset{margin:1rem 0}</style>',
                     '<h1>Solar Fortress operator settings</h1>',
@@ -218,6 +225,11 @@ def make_handler(config_path, auth_path):
                     field("pass_through_qualification_seconds", qual["pass_through"]),
                     field("grid_charge_qualification_seconds", qual["grid_charge"]),
                     field("stop_grid_charge_qualification_seconds", qual["stop_grid_charge"]), '</fieldset>',
+                    '<fieldset><legend>Battery charge-time planning (assumptions until calibrated)</legend>',
+                    '<p>Leave unknown values blank. A configured charging current is a conservative upper cap, NOT an inverter current-limit command. Live verified measurements take priority for the battery model.</p>',
+                    optional_field("battery_capacity_ah", charge["battery_capacity_ah"], step="0.1"),
+                    optional_field("planning_dc_charge_amps", charge["planning_dc_charge_amps"], step="0.1"),
+                    field("finishing_allowance_minutes", charge["finishing_allowance_minutes"]), '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
                     field("full_charge_interval_days", maint["full_charge_interval_days"]),
                     field("request_repeat_days", maint["request_repeat_days"]),
