@@ -57,6 +57,7 @@ DEFAULTS = {
         "max_forecast_age_hours": 6,
         "forecast_latitude": None,
         "forecast_longitude": None,
+        "nws_user_agent": None,
         "require_alert_clear_for_release": True,
         "target_soc": 100.0,
         "reserve_soc": 90.0,
@@ -186,6 +187,12 @@ def validate_config(raw):
     if storm["forecast_latitude"] is not None:
         storm["forecast_latitude"] = number(storm["forecast_latitude"], "forecast_latitude", -90, 90)
         storm["forecast_longitude"] = number(storm["forecast_longitude"], "forecast_longitude", -180, 180)
+    agent = storm["nws_user_agent"]
+    if agent is not None:
+        if (not isinstance(agent, str) or not 10 <= len(agent) <= 160
+                or any(ord(char) < 32 or ord(char) > 126 for char in agent)
+                or ("@" not in agent and "http" not in agent)):
+            raise ValueError("NWS User-Agent must identify the app and contact")
     if not isinstance(storm["require_alert_clear_for_release"], bool):
         raise ValueError("require_alert_clear_for_release must be a boolean")
     storm["target_soc"] = number(storm["target_soc"], "target_soc", 90, 100)
