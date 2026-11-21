@@ -23,6 +23,8 @@ class OperatorPolicyTests(unittest.TestCase):
         self.assertEqual(p["storm"]["accumulation_hours"], 24)
         self.assertEqual(p["storm"]["check_interval_minutes"], 15)
         self.assertEqual(p["maintenance"]["request_repeat_days"], 4)
+        self.assertEqual(p["maintenance"]["post_full_hold_minutes"], 60)
+        self.assertEqual(p["qualification_seconds"]["grid_charge"], 60)
 
     def test_preserve_existing_keys(self):
         p = validate_config({"custom_runtime": {"keep": "me"}, "qualification_seconds": {"grid_charge": 60}})
@@ -161,6 +163,24 @@ class OperatorPolicyTests(unittest.TestCase):
             validate_config({"storm": {"ice": {"immediate_threshold_inches": 0.1}}})
         with self.assertRaises(ValueError):
             validate_config({"storm": {"reserve_soc": 100, "target_soc": 90}})
+
+    def test_adjustable_controller_qualification_and_maintenance_hold(self):
+        policy = validate_config({
+            "qualification_seconds": {
+                "pass_through": 90,
+                "grid_charge": 120,
+                "stop_grid_charge": 45,
+            },
+            "maintenance": {
+                "post_full_hold_minutes": 75,
+            },
+        })
+        self.assertEqual(policy["qualification_seconds"]["grid_charge"], 120)
+        self.assertEqual(policy["maintenance"]["post_full_hold_minutes"], 75)
+        with self.assertRaises(ValueError):
+            validate_config({"qualification_seconds": {"pass_through": 0}})
+        with self.assertRaises(ValueError):
+            validate_config({"maintenance": {"post_full_hold_minutes": 0}})
 
     def test_maintenance_uses_smartshunt_event_and_retry(self):
         now = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
