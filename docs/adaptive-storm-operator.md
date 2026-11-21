@@ -64,10 +64,14 @@ and cancel-manual-override options. Each local storm selection asks for
 a duration (1 to 168 hours, subject to the superuser-configured maximum),
 requires explicit confirmation, and shows its absolute expiration. Renewing
 an existing manual mode requires a separate explicit renewal checkbox.
-The attempt expires if full charge cannot
-be confirmed (72 hours by default), and the hold expires automatically
-after the selected 0–168 hours. Both the default hold (12 hours) and maximum,
-plus the attempt timeout, are superuser-configurable. An existing request
+The request immediately asks the Pi to grid-charge locally, without
+an arbitrary deadline by which it must reach full. The manual override
+still carries an absolute failsafe expiration (168 hours / 7 days by
+default, adjustable 1–720 hours), preventing a stale command from lasting
+forever if SmartShunt never confirms full. Once SmartShunt confirms the
+new full event, the expiry becomes that actual event plus Commander's
+selected post-full hold (0–168 hours). The default hold is 12 hours,
+and both hold limits and the failsafe expiry are superuser-configurable. An existing request
 cannot be silently replaced/double-clicked: explicit replace or cancel is
 required. This local request takes precedence over a server storm plan but
 cannot bypass any Pi hardware safeguard. The request state machine and
@@ -134,6 +138,10 @@ NOT the selected production scheduling architecture.
 6. Verify that exactly the prior normal SOC behaviour resumes after the
    300-second default timeout. Test alternative timeout values, Pi reboot,
    grid loss, return of AC and restoration of VM plan after failover.
+   Separately test Commander local Charge Now while VM102 is down, arrival
+   of the SmartShunt full event long after the old 72-hour assumption,
+   a selectable post-full hold, cancellation, and expiry of a stale local
+   manual command without any valid full event.
 7. Only after local hardware tests, enable actual inverter transitions.
 
 GitHub Actions success means unit tests passed, not that field deployment
