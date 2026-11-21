@@ -87,7 +87,7 @@ class PortalTests(unittest.TestCase):
                 "pass_through_qualification_seconds": 60,
                 "grid_charge_qualification_seconds": 60,
                 "stop_grid_charge_qualification_seconds": 60,
-                "post_full_hold_minutes": 75, "full_charge_interval_days": 10, "commander_full_charge_enabled": "on", "commander_default_hold_hours": 12, "commander_max_hold_hours": 168, "commander_charge_attempt_timeout_hours": 72,
+                "post_full_hold_minutes": 75, "full_charge_interval_days": 10, "commander_full_charge_enabled": "on", "commander_default_hold_hours": 12, "commander_max_hold_hours": 168, "commander_override_expiry_hours": 168,
                 "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
                 "finishing_allowance_minutes": 0,
                 "learning_min_sessions": 2, "learning_history_sessions": 12,
@@ -128,6 +128,8 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(saved["storm"]["manual_override_default_hours"], 24)
         self.assertTrue(saved["commander_full_charge"]["enabled"])
         self.assertEqual(saved["commander_full_charge"]["default_hold_hours"], 12)
+        self.assertEqual(saved["commander_full_charge"]["override_expiry_hours"], 168)
+        self.assertNotIn("charge_attempt_timeout_hours", saved["commander_full_charge"])
         self.assertEqual(saved["storm"]["post_storm_hold_hours"], 18)
         self.assertEqual(saved["storm"]["max_forecast_age_hours"], 6)
         self.assertIsNone(saved["storm"]["forecast_latitude"])
@@ -153,7 +155,7 @@ class PortalTests(unittest.TestCase):
                 "stop_grid_charge_qualification_seconds": 60,
                 "post_full_hold_minutes": 60,
                 "commander_default_hold_hours": 12, "commander_max_hold_hours": 168,
-                "commander_charge_attempt_timeout_hours": 72,
+                "commander_override_expiry_hours": 168,
                 "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
                 "finishing_allowance_minutes": 0,
                 "learning_min_sessions": 2, "learning_history_sessions": 12,
