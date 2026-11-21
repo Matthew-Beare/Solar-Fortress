@@ -59,6 +59,8 @@ DEFAULTS = {
         "immediate_horizon_hours": 24,
         "check_interval_minutes": 15,
         "server_grace_seconds": 300,
+        "manual_override_default_hours": 24,
+        "manual_override_max_hours": 168,
         "post_storm_hold_hours": 12,
         "storm_event_join_hours": 12,
         "max_forecast_age_hours": 6,
@@ -203,6 +205,10 @@ def validate_config(raw):
     storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
     storm["check_interval_minutes"] = whole(storm["check_interval_minutes"], "check_interval_minutes", 5, 120)
     storm["server_grace_seconds"] = whole(storm["server_grace_seconds"], "server_grace_seconds", 15, 3600)
+    storm["manual_override_default_hours"] = whole(storm["manual_override_default_hours"], "manual_override_default_hours", 1, 168)
+    storm["manual_override_max_hours"] = whole(storm["manual_override_max_hours"], "manual_override_max_hours", 1, 168)
+    if storm["manual_override_default_hours"] > storm["manual_override_max_hours"]:
+        raise ValueError("Manual storm override default exceeds maximum")
     storm["post_storm_hold_hours"] = whole(storm["post_storm_hold_hours"], "post_storm_hold_hours", 0, 168)
     storm["storm_event_join_hours"] = whole(storm["storm_event_join_hours"], "storm_event_join_hours", 0, 72)
     storm["max_forecast_age_hours"] = whole(storm["max_forecast_age_hours"], "max_forecast_age_hours", 1, 24)
