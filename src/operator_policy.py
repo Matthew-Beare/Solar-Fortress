@@ -26,6 +26,7 @@ DEFAULTS = {
         "finishing_allowance_minutes": 0,
     },
     "maintenance": {
+        "enabled": True,
         "full_charge_interval_days": 10,
         "request_repeat_days": 4,
         "post_full_hold_minutes": 60,
@@ -90,6 +91,8 @@ def validate_config(raw):
     if not isinstance(maintenance, dict):
         raise ValueError("maintenance must be an object")
     maintenance = {**DEFAULTS["maintenance"], **maintenance}
+    if not isinstance(maintenance["enabled"], bool):
+        raise ValueError("maintenance.enabled must be a boolean")
     maintenance["full_charge_interval_days"] = whole(
         maintenance["full_charge_interval_days"], "full_charge_interval_days", 1, 90
     )
@@ -97,7 +100,7 @@ def validate_config(raw):
         maintenance["request_repeat_days"], "request_repeat_days", 1, 30
     )
     maintenance["post_full_hold_minutes"] = whole(
-        maintenance["post_full_hold_minutes"], "post_full_hold_minutes", 1, 1440
+        maintenance["post_full_hold_minutes"], "post_full_hold_minutes", 0, 1440
     )
     out["maintenance"] = maintenance
 
@@ -173,6 +176,8 @@ def maintenance_request_due(now, last_full_charge, last_request, raw):
     No storm, sunset, or reboot event resets these timestamps.
     """
     config = validate_config(raw)["maintenance"]
+    if not config["enabled"]:
+        return False
     if last_full_charge is None:
         return None
     if now.tzinfo is None or last_full_charge.tzinfo is None:
