@@ -66,6 +66,19 @@ class CommanderFullChargeTests(unittest.TestCase):
         self.assertEqual(describe_full_charge(self.path, full +
                          dt.timedelta(hours=3))["phase"], "cancelled")
 
+    def test_repeat_request_does_not_renew_without_explicit_replacement(self):
+        self.begin(8)
+        original = self.path.read_bytes()
+        with self.assertRaises(ValueError):
+            self.begin(8)
+        self.assertEqual(self.path.read_bytes(), original)
+        updated = begin_full_charge(
+            self.path, self.now + dt.timedelta(minutes=15), 12,
+            self.policy, confirmed=True, replace_existing=True
+        )
+        self.assertEqual(updated["hold_hours"], 12)
+        self.assertNotEqual(original, self.path.read_bytes())
+
     def test_cancel_and_request_need_confirmation(self):
         with self.assertRaises(ValueError):
             begin_full_charge(self.path, self.now, 5, self.policy, confirmed=False)
