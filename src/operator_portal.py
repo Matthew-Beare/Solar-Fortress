@@ -36,10 +36,22 @@ def atomic_json(path, obj, mode=0o600):
         raise ValueError("Unexpected output file")
     if not path.parent.is_dir():
         raise ValueError("Destination directory does not exist")
+    original = path.stat() if path.exists() else None
     fd, tmp = tempfile.mkstemp(prefix=".solar-operator-", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            os.fchmod(stream.fileno(), mode)
+            if original is not None:
+                # Preserve controller/dashboard access, not force 0600 on a
+                # pre-existing production config with a different owner.
+                import stat
+                original_mode = stat.S_IMODE(original.st_mode)
+                if original_mode & 0o002:
+                    raise ValueError("Refusing world-writable production configuration")
+                os.fchmod(stream.fileno(), original_mode)
+                if os.geteuid() == 0:
+                    os.fchown(stream.fileno(), original.st_uid, original.st_gid)
+            else:
+                os.fchmod(stream.fileno(), mode)
             json.dump(obj, stream, indent=2, sort_keys=True)
             stream.write("\n")
             stream.flush()
