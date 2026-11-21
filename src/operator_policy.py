@@ -52,6 +52,7 @@ DEFAULTS = {
         "accumulation_hours": 24,
         "immediate_horizon_hours": 24,
         "check_interval_minutes": 15,
+        "server_grace_seconds": 300,
         "post_storm_hold_hours": 12,
         "storm_event_join_hours": 12,
         "max_forecast_age_hours": 6,
@@ -179,6 +180,7 @@ def validate_config(raw):
     # A storm first forecast with short warning can immediately merit action.
     storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
     storm["check_interval_minutes"] = whole(storm["check_interval_minutes"], "check_interval_minutes", 5, 120)
+    storm["server_grace_seconds"] = whole(storm["server_grace_seconds"], "server_grace_seconds", 15, 3600)
     storm["post_storm_hold_hours"] = whole(storm["post_storm_hold_hours"], "post_storm_hold_hours", 0, 168)
     storm["storm_event_join_hours"] = whole(storm["storm_event_join_hours"], "storm_event_join_hours", 0, 72)
     storm["max_forecast_age_hours"] = whole(storm["max_forecast_age_hours"], "max_forecast_age_hours", 1, 24)
