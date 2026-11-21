@@ -73,6 +73,18 @@ class ChargeLearningTests(unittest.TestCase):
         )["completed"])
         self.assertEqual(training_status(self.path)["completed_sessions"], 1)
 
+    def test_taper_to_zero_net_current_keeps_training_session(self):
+        self.sample(self.t0, 40, amps=30)
+        self.sample(self.t0 + dt.timedelta(hours=1), 96, amps=1.5)
+        near_full = self.sample(self.t0 + dt.timedelta(hours=2), 99,
+                                grid=True, amps=0)
+        self.assertEqual(near_full["status"], "charging_sample")
+        completed_at = self.t0 + dt.timedelta(hours=3)
+        result = self.sample(completed_at, 100, grid=False, amps=0,
+                             full=completed_at)
+        self.assertTrue(result["completed"])
+        self.assertEqual(training_status(self.path)["completed_sessions"], 1)
+
     def test_old_full_event_cannot_close_new_charge(self):
         yesterday = self.t0 - dt.timedelta(days=1)
         self.sample(self.t0, 40, full=yesterday)
