@@ -45,11 +45,28 @@ user-selected availability tradeoff, not a bug to silently override.
 
 Pi-local manual choices are automatic, normal, storm_charge, and
 storm_pass_through. The explicit local choice outranks an existing fresh
-server plan and works when the VM is unavailable. The change is stored with
-one atomic local state write and read back after reboot. Selecting the same
-mode again performs no write. Every change requires a confirmed local action.
+server plan and works when the VM is unavailable. EVERY manually selected
+storm override now includes an absolute expiration timestamp. The default
+manual lifetime is 24 hours and the maximum 168 hours, both configurable
+through the superuser GUI. A legacy or expired manual entry is ignored and
+the Pi resumes the current server-plan or normal SOC policy. Changes persist
+across reboot; deliberately renewing requires explicit confirmation and a
+new expiration, rather than silently extending on duplicate clicks.
 All manual choices remain subordinate to local battery/BMS, AC source,
 Victron hardware, and wiring limits.
+
+Commander Boomer can also request a one-time full charge WITHOUT an account
+or login. His no-login page asks how many hours the battery should be held
+full AFTER a NEW SmartShunt full-charge event, requires confirmation, and
+provides a cancellation button. The attempt expires if full charge cannot
+be confirmed (72 hours by default), and the hold expires automatically
+after the selected 0–168 hours. Both the default hold (12 hours) and maximum,
+plus the attempt timeout, are superuser-configurable. An existing request
+cannot be silently replaced/double-clicked: explicit replace or cancel is
+required. This local request takes precedence over a server storm plan but
+cannot bypass any Pi hardware safeguard. The request state machine and
+private no-login page are staged, not wired into the actual inverter or the
+existing ordinary dashboard yet.
 
 src/pi_storm_supervisor.py now implements and tests this read-only policy.
 The actual Commander-facing web control and electrical command integration
@@ -58,11 +75,15 @@ physical inverter just because its pure state machine tests pass.
 
 ## Local operator password is an accidental-edit guard
 
-The staged localhost-only (127.0.0.1:8082) settings editor now accepts a
-custom administrator username, e.g. Captain Jean-Luc Picard, and an 8+
-character password. Credentials are chosen locally at initialization,
-salted and hashed; never commit actual credentials. User-chosen weak or
-themed codes are permissible solely under this deliberate LOCAL TRUST model.
+The staged localhost-only (127.0.0.1:8082) settings editor now uses a
+first-run registration screen: the superuser CHOOSES the username and enters
+a password TWICE. No login is hardcoded or pre-enrolled. Passwords may be
+8 to 256 characters; eight is a minimum, never a maximum. Enrollment is
+disabled after the first account is registered. Password rotation also
+requires current password plus new password twice. The salted password hash
+is stored locally and never committed. This admin credential is deliberately
+separate from the private-LAN server plan authentication. No-login Commander
+actions have only the single full-charge/cancel scope.
 Do NOT expose port 8082 to the internet or untrusted LAN. This password
 does not authenticate VM102 storm-control messages, grant Linux root access,
 or protect the Victron BMS. Server plan messages need independently
@@ -97,8 +118,10 @@ NOT the selected production scheduling architecture.
    make server read-only collection and storm learning work there.
 3. Implement authenticated VM102 plan delivery, Pi heartbeat/freshness
    checks, replay resistance, and local electrical safety precedence.
-4. Add a dedicated, confirmed Commander manual override to the Pi local
-   GUI. Keep the ordinary display view-only otherwise.
+4. Embed the staged Commander no-login full-charge/hold/cancel action
+   in the ordinary Pi dashboard without exposing administrator settings.
+   Connect SmartShunt event updates and independently test completion,
+   timeout, cancellation and double-submit behaviour.
 5. Independently test four scenarios: healthy VM/storm, server loss during
    charging, server loss during storm/pass-through, and local manual override
    while server and internet are down.
