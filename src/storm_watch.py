@@ -11,7 +11,7 @@ import datetime as dt
 
 from operator_policy import _aware_time, estimated_charge_hours, number, validate_config
 
-SOURCE_MAX_AGE = dt.timedelta(hours=6)
+# Default is in operator_policy.storm.max_forecast_age_hours.
 
 
 def _period_rows(now, periods, search_end, policy):
@@ -121,7 +121,7 @@ def historical_matches(now, events, snapshots, policy, current_source_updated_at
     if current_source_updated_at is None:
         return []
     current_issue = _aware_time(current_source_updated_at)
-    if current_issue > now or now - current_issue > SOURCE_MAX_AGE:
+    if current_issue > now or now - current_issue > dt.timedelta(hours=policy["max_forecast_age_hours"]):
         return []
     minimum_age = dt.timedelta(hours=policy["confirmation_hours"])
     maximum_age = minimum_age + dt.timedelta(hours=12)
@@ -156,7 +156,9 @@ def historical_matches(now, events, snapshots, policy, current_source_updated_at
 
 def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
                        soc, capacity_ah, actual_dc_charge_amps,
-                       forecast_source_updated_at=None):
+                       forecast_source_updated_at=None,
+                       learned_charge_hours=None, learning_source=None,
+                       learning_completed_sessions=0):
     """Recalculate an advisory charge decision on every fresh forecast poll.
 
     actual_dc_charge_amps is a VERIFIED attainable positive charging rate, not
@@ -177,7 +179,7 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
                 "reasons": [], "confirmed_by_history": False,
                 "note": "Official NWS update time unavailable; do not trust a cached forecast."}
     source_time = _aware_time(forecast_source_updated_at)
-    if source_time > now or now - source_time > SOURCE_MAX_AGE:
+    if source_time > now or now - source_time > dt.timedelta(hours=policy["max_forecast_age_hours"]):
         return {"stage": "stale_forecast", "charge_recommended": False,
                 "reasons": [], "confirmed_by_history": False,
                 "note": "NWS data stale or timestamp from the future."}
@@ -236,7 +238,13 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
         current_soc, capacity_ah, actual_dc_charge_amps, policy["target_soc"]
     )
     finishing_hours = charge_model["finishing_allowance_minutes"] / 60.0
-    charge_hours = bulk_hours + finishing_hours
+    fallback_hours = bulk_hours + finishing_hours
+    # Observed sessions extend through the actual SmartShunt full event and
+    # already include absorption taper. Do NOT count finishing time twice.
+    learned = None
+    if learned_charge_hours is not None and charge_model["learning_enabled"]:
+        learned = number(learned_charge_hours, "learned_charge_hours", 0, 1000)
+    charge_hours = max(fallback_hours, learned) if learned is not None else fallback_hours
     budget_hours = charge_hours + policy["charge_margin_hours"]
     deadline = time_left <= budget_hours
 
@@ -265,7 +273,12 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
         "estimated_bulk_charge_hours": round(bulk_hours, 2),
         "estimated_charge_hours": round(charge_hours, 2),
         "finishing_allowance_hours": round(finishing_hours, 2),
-        "charging_estimate_source": estimate_source,
+        "charging_estimate_source": (
+            "learned_smartshunt_sessions_and_physics_floor" if learned is not None
+            else estimate_source
+        ),
+        "learning_completed_sessions": learning_completed_sessions,
+        "learner_details": learning_source,
         "charge_planning_hours": round(budget_hours, 2),
         "history_matches": matches,
         "note": "Read-only advisory: no Pi command or storm latch implemented.",
