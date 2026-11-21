@@ -302,7 +302,7 @@ def make_handler(config_path, auth_path):
                 length = int(self.headers.get("Content-Length", "-1"))
                 if not 0 <= length <= MAX_BODY:
                     return self.reply(413, "Invalid form size", "text/plain")
-                form = urllib.parse.parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True, max_num_fields=32)
+                form = urllib.parse.parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True, max_num_fields=96)
                 with LOCK:
                     auth = load_json(auth_path)
                     token = form.get("csrf", [""])[0]
