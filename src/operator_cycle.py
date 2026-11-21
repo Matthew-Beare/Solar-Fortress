@@ -140,7 +140,9 @@ def main():
                 try:
                     latitude = config["storm"]["forecast_latitude"]
                     longitude = config["storm"]["forecast_longitude"]
-                    latest_forecast, latest_alerts = fetch_weather(latitude, longitude, now)
+                    latest_forecast, latest_alerts = fetch_weather(
+                        latitude, longitude, now, user_agent=config["storm"]["nws_user_agent"]
+                    )
                     write_atomic_json(args.forecast_file, latest_forecast)
                     write_atomic_json(args.alerts_file, latest_alerts)
                 except (ValueError, TypeError, OSError, KeyError) as weather_error:
