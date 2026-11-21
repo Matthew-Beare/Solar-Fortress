@@ -24,6 +24,15 @@ DEFAULTS = {
         "battery_capacity_ah": None,
         "planning_dc_charge_amps": None,
         "finishing_allowance_minutes": 0,
+        "learning_enabled": True,
+        "learning_min_sessions": 2,
+        "learning_history_sessions": 12,
+        "learning_soc_match_percent": 5.0,
+        "learning_conservative_multiplier": 1.1,
+        "learning_max_gap_minutes": 20,
+        "learning_sample_interval_seconds": 60,
+        "learning_min_charge_current_amps": 1.0,
+        "learning_min_soc_gain_percent": 5.0,
     },
     "maintenance": {
         "enabled": True,
@@ -40,6 +49,8 @@ DEFAULTS = {
         "accumulation_hours": 24,
         "immediate_horizon_hours": 24,
         "check_interval_minutes": 15,
+        "post_storm_hold_hours": 12,
+        "storm_event_join_hours": 12,
         "target_soc": 100.0,
         "reserve_soc": 90.0,
         "snow": {"enabled": True, "threshold_inches": 6.0, "immediate_threshold_inches": None},
@@ -119,6 +130,24 @@ def validate_config(raw):
     charge["finishing_allowance_minutes"] = whole(
         charge["finishing_allowance_minutes"], "finishing_allowance_minutes", 0, 1440
     )
+    if not isinstance(charge["learning_enabled"], bool):
+        raise ValueError("learning_enabled must be a boolean")
+    for field, low, high in (
+        ("learning_min_sessions", 1, 20),
+        ("learning_history_sessions", 1, 100),
+        ("learning_max_gap_minutes", 1, 120),
+        ("learning_sample_interval_seconds", 10, 3600),
+    ):
+        charge[field] = whole(charge[field], field, low, high)
+    for field, low, high in (
+        ("learning_soc_match_percent", 0.5, 20.0),
+        ("learning_conservative_multiplier", 1.0, 3.0),
+        ("learning_min_charge_current_amps", 0.1, 100.0),
+        ("learning_min_soc_gain_percent", 0.1, 50.0),
+    ):
+        charge[field] = number(charge[field], field, low, high)
+    if charge["learning_min_sessions"] > charge["learning_history_sessions"]:
+        raise ValueError("Learning minimum cannot exceed history sessions")
     out["charge_estimate"] = charge
 
     storm = out.get("storm", {})
@@ -137,6 +166,8 @@ def validate_config(raw):
     # A storm first forecast with short warning can immediately merit action.
     storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
     storm["check_interval_minutes"] = whole(storm["check_interval_minutes"], "check_interval_minutes", 5, 120)
+    storm["post_storm_hold_hours"] = whole(storm["post_storm_hold_hours"], "post_storm_hold_hours", 0, 168)
+    storm["storm_event_join_hours"] = whole(storm["storm_event_join_hours"], "storm_event_join_hours", 0, 72)
     storm["target_soc"] = number(storm["target_soc"], "target_soc", 90, 100)
     storm["reserve_soc"] = number(storm["reserve_soc"], "reserve_soc", 50, 100)
     if storm["reserve_soc"] > storm["target_soc"]:
