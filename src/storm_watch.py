@@ -70,12 +70,19 @@ def qualifying_events(now, periods, config):
     return sorted(events, key=lambda value: (_aware_time(value["onset"]), value["kind"]))
 
 
-def historical_matches(now, events, snapshots, policy):
+def historical_matches(now, events, snapshots, policy, current_source_updated_at):
     """Match same hazard and near-identical onset in a forecast ~24h older.
 
     Cached 15-minute requests are NOT equivalent to 24h of confirmation.
     History must be persisted across restarts by the future server scheduler.
     """
+    # An HTTP cache hit or repeated reading of the exact same official
+    # NWS grid is not independent forecast confirmation.
+    if current_source_updated_at is None:
+        return []
+    current_source = _aware_time(current_source_updated_at)
+    if current_source > now or now - current_source > dt.timedelta(hours=6):
+        return []
     delay = dt.timedelta(hours=policy["confirmation_hours"])
     limit = delay + dt.timedelta(hours=12)
     matches = []
@@ -83,6 +90,12 @@ def historical_matches(now, events, snapshots, policy):
         observed = _aware_time(old["checked_at"])
         age = now - observed
         if not delay <= age <= limit:
+            continue
+        old_source = old.get("source_update_time")
+        if old_source is None:
+            continue
+        old_source = _aware_time(old_source)
+        if old_source >= current_source or old_source > observed:
             continue
         old_events = qualifying_events(
             observed, old["periods"], {"storm": {**policy, "enabled": True}}
@@ -104,7 +117,8 @@ def historical_matches(now, events, snapshots, policy):
 
 
 def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
-                       soc, capacity_ah, actual_dc_charge_amps):
+                       soc, capacity_ah, actual_dc_charge_amps,
+                       forecast_source_updated_at=None):
     """Assess, do not actuate, an impending forecast weather event."""
     now = _aware_time(now)
     policy = validate_config(config)["storm"]
@@ -122,7 +136,9 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
         }
     onset = _aware_time(events[0]["onset"])
     time_left = max(0.0, (onset - now).total_seconds() / 3600)
-    matches = historical_matches(now, events, archived_snapshots, policy)
+    matches = historical_matches(
+        now, events, archived_snapshots, policy, forecast_source_updated_at
+    )
     confirmed = bool(matches)
     reasons = sorted({event["kind"] for event in events})
     if soc is None or capacity_ah is None or actual_dc_charge_amps is None:
