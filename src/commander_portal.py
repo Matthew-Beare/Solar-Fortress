@@ -106,6 +106,8 @@ def make_handler(config_path, state_path):
                         '<p>0 hours means stop the override when full charge is confirmed.</p>'
                         '<label><input type="checkbox" name="confirm" value="yes" required>'
                         'I confirm this full-charge request</label>'
+                        '<label><input type="checkbox" name="replace" value="yes">'
+                        'Replace the existing full-charge request, if one is active</label>'
                         '<button type="submit">Request Full Charge</button></form>'
                         '<form method="post" action="/cancel">'
                         '<input type="hidden" name="csrf" value="' + token + '">'
@@ -144,8 +146,10 @@ def make_handler(config_path, state_path):
                     now = dt.datetime.now(UTC)
                     if self.path == "/request":
                         hold = int(form["hold_hours"][0])
-                        result = begin_full_charge(state_path, now, hold, settings,
-                                                   confirmed=True)
+                        result = begin_full_charge(
+                            state_path, now, hold, settings, confirmed=True,
+                            replace_existing=(form.get("replace") == ["yes"]),
+                        )
                     else:
                         result = cancel_full_charge(state_path, now, confirmed=True)
                 self.reply(
