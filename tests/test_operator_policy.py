@@ -128,6 +128,18 @@ class OperatorPolicyTests(unittest.TestCase):
         self.assertFalse(storm_decision(now, [period], policy)["active"])
         self.assertTrue(storm_decision(now + dt.timedelta(hours=2), [period], policy)["active"])
 
+    def test_no_false_trigger_from_24h_ice_within_next_12h_dry(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        conf = validate_config({"storm": {"enabled": True}})
+        periods = [
+            {"start": now, "end": now + dt.timedelta(hours=12), "ice_inches": 0},
+            {"start": now + dt.timedelta(hours=14),
+             "end": now + dt.timedelta(hours=16), "ice_inches": 0.6},
+        ]
+        # Future accumulation is high, but all precipitation begins >12h.
+        self.assertFalse(storm_decision(now, periods, conf)["active"])
+        self.assertTrue(storm_decision(now + dt.timedelta(hours=3), periods, conf)["active"])
+
     def test_reject_out_of_range_polling_cadence(self):
         for interval in (0, 4, 121, 15.5, True):
             with self.assertRaises(ValueError):
