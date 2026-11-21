@@ -74,7 +74,8 @@ class PortalTests(unittest.TestCase):
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
                 "snow_immediate_threshold": "", "ice_immediate_threshold": 0.5,
                 "wind_immediate_threshold": "",
-                "storm_enabled": "on", "snow_enabled": "on", "ice_enabled": "on"}
+                "storm_enabled": "on", "snow_enabled": "on", "ice_enabled": "on",
+                "maintenance_enabled": "on"}
         status, _ = self.request("POST", "/settings", form, password)
         self.assertEqual(status, 403)
         self.assertNotIn("storm", json.loads(self.config.read_text()))
@@ -82,6 +83,7 @@ class PortalTests(unittest.TestCase):
         status, _ = self.request("POST", "/settings", form, password)
         self.assertEqual(status, 200)
         saved = json.loads(self.config.read_text())
+        self.assertTrue(saved["maintenance"]["enabled"])
         self.assertTrue(saved["storm"]["enabled"])
         self.assertEqual(saved["storm"]["watch_hours"], 8)
         self.assertEqual(saved["qualification_seconds"]["pass_through"], 60)
