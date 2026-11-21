@@ -37,8 +37,10 @@ not replace production src/ or controller.json with the old Git version.
 
 The portal preserves unrelated JSON keys while editing:
 - Emergency grid charge, pass-through and battery return SOC thresholds
+- Pass-through, grid-charge and stop-charge qualification timers (default 60 seconds each)
 - Full-charge maintenance interval (default 10 days)
 - Retry request interval (default 4 days)
+- Hold after verified SmartShunt full-charge (default 60 minutes; saved schema pending deployed Pi integration)
 - Storm Mode enabled/disabled, immediate storm-onset lookahead (default 12 hours)
 - Early Storm Watch lead (default 48 hours, configurable 1 to 120 hours; 8 works)
 - Forecast comparison delay (default 24 hours, configurable 1 to 48 hours)
@@ -107,3 +109,8 @@ replenish 40% to 100% SOC, before absorption taper and concurrent loads.
 Master storm disable is authoritative: it turns off severe overrides too.
 Configuration is not applied to the real Pi until a separate validated
 integration and hardware test. Safety/BMS/inverter limits are not GUI knobs.
+
+The new qualification and post-full hold parameters are staged using the
+public controller's qualification_seconds schema and a prospective maintenance
+post_full_hold_minutes key. They are not proof that the newer deployed Pi
+currently consumes those fields. Verify its actual installed schema first.
