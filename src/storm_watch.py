@@ -218,7 +218,11 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
         actual_dc_charge_amps = min(
             actual_dc_charge_amps, charge_model["planning_dc_charge_amps"]
         )
-    if soc is None or capacity_ah is None or actual_dc_charge_amps is None:
+    learned = None
+    if learned_charge_hours is not None and charge_model["learning_enabled"]:
+        learned = number(learned_charge_hours, "learned_charge_hours", 0, 1000)
+    if soc is None or (learned is None and
+                       (capacity_ah is None or actual_dc_charge_amps is None)):
         return {
             "stage": "needs_fresh_telemetry", "charge_recommended": False,
             "reasons": reasons, "confirmed_by_history": confirmed,
@@ -234,17 +238,19 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
             "severe_immediate": bool(severe),
             "hours_until_onset": round(time_left, 2),
         }
-    bulk_hours = estimated_charge_hours(
-        current_soc, capacity_ah, actual_dc_charge_amps, policy["target_soc"]
+    bulk_hours = (
+        estimated_charge_hours(current_soc, capacity_ah, actual_dc_charge_amps,
+                               policy["target_soc"])
+        if capacity_ah is not None and actual_dc_charge_amps is not None else None
     )
-    finishing_hours = charge_model["finishing_allowance_minutes"] / 60.0
-    fallback_hours = bulk_hours + finishing_hours
-    # Observed sessions extend through the actual SmartShunt full event and
-    # already include absorption taper. Do NOT count finishing time twice.
-    learned = None
-    if learned_charge_hours is not None and charge_model["learning_enabled"]:
-        learned = number(learned_charge_hours, "learned_charge_hours", 0, 1000)
-    charge_hours = max(fallback_hours, learned) if learned is not None else fallback_hours
+    finishing_hours = (charge_model["finishing_allowance_minutes"] / 60.0
+                       if bulk_hours is not None else 0.0)
+    fallback_hours = (bulk_hours + finishing_hours) if bulk_hours is not None else None
+    # Learned sessions end at SmartShunt full, including the taper. Do not
+    # add the approximate finishing allowance a second time.
+    charge_hours = (max(fallback_hours, learned)
+                    if fallback_hours is not None and learned is not None else
+                    learned if learned is not None else fallback_hours)
     budget_hours = charge_hours + policy["charge_margin_hours"]
     deadline = time_left <= budget_hours
 
@@ -270,7 +276,7 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
         "reasons": reasons,
         "event_onset": onset.isoformat(),
         "hours_until_onset": round(time_left, 2),
-        "estimated_bulk_charge_hours": round(bulk_hours, 2),
+        "estimated_bulk_charge_hours": round(bulk_hours, 2) if bulk_hours is not None else None,
         "estimated_charge_hours": round(charge_hours, 2),
         "finishing_allowance_hours": round(finishing_hours, 2),
         "charging_estimate_source": (
