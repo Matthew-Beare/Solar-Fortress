@@ -22,6 +22,8 @@ DEFAULTS = {
     "storm": {
         "enabled": False,
         "lookahead_hours": 12,
+        "accumulation_hours": 24,
+        "check_interval_minutes": 15,
         "target_soc": 100.0,
         "reserve_soc": 90.0,
         "snow": {"enabled": True, "threshold_inches": 6.0},
@@ -80,6 +82,8 @@ def validate_config(raw):
     if not isinstance(storm["enabled"], bool):
         raise ValueError("storm.enabled must be boolean")
     storm["lookahead_hours"] = whole(storm["lookahead_hours"], "lookahead_hours", 1, 72)
+    storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
+    storm["check_interval_minutes"] = whole(storm["check_interval_minutes"], "check_interval_minutes", 5, 120)
     storm["target_soc"] = number(storm["target_soc"], "target_soc", 90, 100)
     storm["reserve_soc"] = number(storm["reserve_soc"], "reserve_soc", 50, 100)
     if storm["reserve_soc"] > storm["target_soc"]:
@@ -141,27 +145,24 @@ def _aware_time(value):
 
 
 def storm_decision(now, forecast_periods, raw):
-    """Evaluate a rolling forward window, intended to run on EVERY refresh.
+    """Advisory trigger: 12h lead and rolling 24h snowfall/ice totals.
 
-    The ice and snow conditions use the combined amount across forecast
-    intervals intersecting [now, now + lookahead]. Wind uses the maximum
-    forecast gust. Unlike comparing a single period, 0.15 + 0.12 inches of
-    ice is enough to trip a 0.25-inch threshold.
+    Find a precipitation forecast beginning (or underway) during the next
+    lookahead_hours, then consider precipitation inside the following
+    accumulation_hours. Wind is maximum gust during the lead horizon.
+    Count partial NWS intervals in full: an intentionally conservative
+    estimate, not an assertion that an interval's amount is evenly spread.
 
-    When an accumulation interval partly overlaps the window, its FULL
-    forecast amount counts conservatively, not an invented hourly split.
-    This can trigger early: the NWS does not promise that precipitation is
-    spread evenly within that interval.
-
-    This is a read-only instantaneous trigger. The future Pi controller
-    MUST persist a Storm Mode latch; it must not end an active storm merely
-    because its forecast shifts outside the lookahead or the API goes down.
+    This does NOT latch Storm Mode or command charging. Missing quantities
+    are unknown. Production must verify NWS accumulation period semantics.
     """
     policy = validate_config(raw)["storm"]
     if not policy["enabled"]:
         return {"active": False, "reasons": [], "unknown": [], "enabled": False}
     now = _aware_time(now)
-    window_end = now + dt.timedelta(hours=policy["lookahead_hours"])
+    lead_end = now + dt.timedelta(hours=policy["lookahead_hours"])
+    accumulate = dt.timedelta(hours=policy["accumulation_hours"])
+    analysis_end = lead_end + accumulate
     quantities = {"snow": [], "ice": [], "wind": []}
     lookup = (
         ("snow", "snow_inches"),
@@ -173,7 +174,7 @@ def storm_decision(now, forecast_periods, raw):
         end = _aware_time(period["end"])
         if start >= end:
             raise ValueError("Invalid forecast period")
-        if start >= window_end or end <= now:
+        if start >= analysis_end or end <= now:
             continue
         for kind, key in lookup:
             if not policy[kind]["enabled"]:
@@ -197,15 +198,33 @@ def storm_decision(now, forecast_periods, raw):
             unknown.append(kind)
             continue
         if kind == "wind":
-            observed = max(value for _, _, value in intervals)
+            gusts = [value for start, end, value in intervals
+                     if start < lead_end and end > now]
+            if not gusts:
+                unknown.append(kind)
+                continue
+            observed = max(gusts)
         else:
-            # Numeric accumulation totals must not count overlapping
-            # intervals twice. The input must be one normalized grid layer,
-            # not duplicate hourly reconstructions.
+            # A single forecast variable must have disjoint validity
+            # periods; duplicates must not inflate a risk threshold.
             for previous, following in zip(intervals, intervals[1:]):
                 if previous[1] > following[0]:
                     raise ValueError("Overlapping " + kind + " intervals")
-            observed = sum(value for _, _, value in intervals)
+            # Only a storm that is underway or starts within the advance
+            # warning horizon can cause a request. Forecast accumulation
+            # may then continue over a longer 24-hour assessment period.
+            anchors = [now]
+            anchors.extend(max(now, start) for start, end, value in intervals
+                           if start < lead_end and end > now and value > 0)
+            if len(anchors) == 1 and not any(
+                    start < lead_end and end > now for start, end, _ in intervals):
+                unknown.append(kind)
+                continue
+            observed = max(
+                sum(value for start, end, value in intervals
+                    if start < anchor + accumulate and end > anchor)
+                for anchor in anchors
+            )
         if observed >= policy[kind][metric]:
             reasons.append(kind)
     return {
@@ -215,6 +234,8 @@ def storm_decision(now, forecast_periods, raw):
         "enabled": True,
         "evaluated_at": now.isoformat(),
         "lookahead_hours": policy["lookahead_hours"],
+        "accumulation_hours": policy["accumulation_hours"],
+        "check_interval_minutes": policy["check_interval_minutes"],
     }
 
 
