@@ -14,3 +14,7 @@ jobs:
         run: python -m py_compile src/controller.py src/selftest.py
       - name: Run battery SOC policy tests (no hardware)
         run: python src/selftest.py
+      - name: Validate staged Storm Mode and administrator code (no hardware)
+        run: |
+          python -m py_compile src/operator_policy.py src/operator_portal.py
+          python -m unittest discover -s tests -p 'test_operator_policy.py' -v
