@@ -1,160 +1,111 @@
-# Solar Fortress adaptive charging and storm latch: staged implementation
+# Solar Fortress: server planning, local control (canonical design)
 
-Status: feature branch only. NOT MERGED, NOT INSTALLED, NOT SWITCHING INVERTER MODES.
-The running Venus OS Pi is newer than this repository snapshot. Reconcile the
-running files and back up its configuration/state before any deployment.
+Status: staged feature branch only. Not merged, deployed, actuating the MultiPlus-II,
+or verified against the newer running Pi controller. Earlier Pi-only architecture,
+including continuous Pi-side weather fetching and charge-history collection,
+is SUPERSEDED by this decision.
 
-## Components and their permissions
+## Physical trust and storage boundary
 
-- src/charge_monitor.py: optional loopback-only 127.0.0.1:8080/api/status
-  observer, configured poll default 60 seconds, persistent SQLite history.
-- src/charge_learning.py: trains on COMPLETED, uninterrupted grid-charge
-  sessions only. Completion requires SmartShunt TimeSinceLastFullCharge
-  identifying an actual full event; SOC 100 alone never counts.
-- src/storm_watch.py: read-only forecast + battery readiness decision. Learned
-  time to SmartShunt full (which includes observed absorption/taper) is compared
-  against the conservative capacity/current fallback when available. A
-  configurable 4-hour storm buffer is then added, never doubled.
-- src/storm_latch.py: persistent SQLite state machine. Storm Mode can request
-  pre-storm grid charging, then pass-through once the storm begins or a
-  verified full charge and separately configured balancing hold complete.
-  Its output is an ADVISORY; no DBus or inverter-control endpoint is used.
-- src/nws_client.py: independent read-only official HTTPS National Weather
-  Service forecast and winter-weather alert fetch; requires accurate site
-  coordinates specified in the authenticated operator GUI.
-- src/operator_cycle.py: orchestrates the above. It can poll the Pi every
-  configured minute, fetch NWS at the configured 15-minute interval,
-  recalculate the charge deadline from the newest SOC and trained model,
-  persist latch state, and emit advisory JSON. API outages preserve saved
-  state and never imply that a storm has ended.
-- src/operator_portal.py: loopback 127.0.0.1:8082, password-protected.
-  Saves validated editable settings with CSRF protection. It does NOT restart
-  the old controller, authorize a control API, or apply unintegrated settings.
+- Raspberry Pi 4 running Venus OS: NO INTERNET EGRESS. Allow only strictly
+  required private-site LAN communication with the Boomer HQ server and local
+  trusted administration. Enforce this with firewall/network rules, not merely
+  by declining to call a web API. The Pi alone owns Victron electrical control.
+- GREPmox / boomer-solar VM102: fetch NWS and active alerts, store forecast
+  revisions, collect Pi read-only SmartShunt telemetry, learn true
+  time-to-full-charge from completed charging sessions including taper,
+  estimate the storm deadline, and issue a short-lived private-network plan.
+- Storage: GREPmox has an SSD for its OS and a separate HDD for bulk storage.
+  Do not infer that a VM database currently resides on either disk; verify
+  its actual backing volume before deploying the high-write history. Use
+  appropriately batched database writes on the server's selected datastore.
+  Pi persistence should be limited to small configuration and MANUAL override
+  state on changes, not periodic forecast or per-minute learning history.
+- Pi local controller may read the VM's plan over an authenticated LAN path
+  after that transport is implemented. No unrestricted or raw Victron command
+  API may be granted to VM102.
 
-## Adaptive charging time model
+## Server failure / normal fallback
 
-A completed charging session records timestamped SOC readings until the
-SmartShunt confirms a full-charge event. That includes charging taper near
-full; elapsed time from each recorded SOC to full becomes training data.
-The estimator selects a conservative recent observed completion duration
-from independent sessions with nearby starting SOC values.
+The Pi expects an authenticated short-lived storm plan, version 1, containing
+issued_at, expires_at and an allowlisted mode: normal, storm_charge or
+storm_pass_through. If the server dies, plan authentication fails, or the
+server plan expires, the automatic override is removed. The Pi returns to
+its PRE-EXISTING NORMAL SOC policy, including local AC-loss and battery
+protection rules. The normal fallback does NOT retain an endless server
+weather latch. Default server-plan grace is 300 seconds, configurable
+15 to 3600 seconds via the protected administrator settings.
 
-The defaults are editable via the authenticated GUI:
-- Automatic learning enabled, sample status every 60 seconds
-- Minimum completed full-charge sessions: 2
-- Recent completed sessions retained for prediction: 12
-- Maximum SOC match difference: 5 percentage points
-- Conservative multiplier on the slowest matching session: 1.10
-- Allowed sampling gap: 20 minutes
-- Sample spacing: 60 seconds
-- Minimum positive battery net charge current: 1 amp
-- Near-full taper allowance: keep an existing charge session active at or
-  above 95% SOC even if measured battery current falls to -2 amps (both
-  thresholds independently editable); only a SmartShunt full event can end
-  that session successfully
-- Minimum SOC gain for a session: 5 percentage points
-- Optional bank capacity in Ah, conservative DC current cap in amps, and
-  separate manual finishing-time allowance while the model is untrained
+The Pi can always operate safely without the VM, internet, NWS, or historical
+database. The tradeoff is that normal mode may choose battery-first while a
+storm is still ongoing, potentially consuming reserve. This is an EXPLICIT
+user-selected availability tradeoff, not a bug to silently override.
 
-The software must never call these learned values "measured" until the
-physical system has accumulated actual verified sessions. Missing history
-falls back to clearly labelled estimated bulk charge duration, if nominal
-bank capacity and safe charger rate are known. It cannot invent missing
-measurements. Learned ETA never automatically changes Victron charge rate.
+## Commander Boomer's manual override
 
-## Storm timing and pass-through latch
+Pi-local manual choices are automatic, normal, storm_charge, and
+storm_pass_through. The explicit local choice outranks an existing fresh
+server plan and works when the VM is unavailable. The change is stored with
+one atomic local state write and read back after reboot. Selecting the same
+mode again performs no write. Every change requires a confirmed local action.
+All manual choices remain subordinate to local battery/BMS, AC source,
+Victron hardware, and wiring limits.
 
-With the normal target at 100% SOC and a 4-hour planning buffer:
-- Learned/estimated 12 hours to actual full charge -> recommend charging
-  when forecast onset is 16 hours away.
-- If severe weather meets its separate immediate threshold (0.5 inch ice
-  forecast in the next 24 hours by default), recommend charging immediately
-  without waiting for any older Watch or forecast confirmation.
-- On activation, persist the forecast event's predicted end of accumulation.
-  Later fresh forecasts can EXTEND that end, not shorten it.
-- Continue requesting pass-through after the predicted onset and through the
-  entire storm. Do not voluntarily drain battery reserve while on grid.
-- Keep the latch until last predicted accumulation end + 12 HOURS by default.
-  Post-storm hold is independently editable 0..168 hours, and the interval
-  joining successive forecast precipitation periods defaults to 12 hours.
-- Default release also requires fresh NWS weather (max issue age 6 hours,
-  configurable) and an independently confirmed CLEAR active winter-alert
-  result. No forecast or alert response means UNKNOWN, never CLEAR.
-- The operator's explicit master Storm Mode OFF overrides the advisor.
-  Local AC/BMS/manual safeguards are authoritative when inverter integration
-  is eventually added.
-- Configurable full-charge balancing/maintenance hold after a real SmartShunt
-  event is SEPARATE: default 60 minutes, adjustable 0..1440 minutes; this
-  hold is NOT silently merged into the storm planning buffer. A full SOC
-  display does not prove BMS cell balancing has completed.
+src/pi_storm_supervisor.py now implements and tests this read-only policy.
+The actual Commander-facing web control and electrical command integration
+are NOT YET WIRED TO THE DEPLOYED Pi. Do not claim the override works on the
+physical inverter just because its pure state machine tests pass.
 
-Every ordinary threshold/duration in this design can be edited in the
-authenticated portal. Hardware current ratings, battery/BMS protections,
-wire limits and safe inverter modes cannot be overridden through the GUI.
+## Local operator password is an accidental-edit guard
 
-## Controlled test setup (does NOT actuate hardware)
+The staged localhost-only (127.0.0.1:8082) settings editor now accepts a
+custom administrator username, e.g. Captain Jean-Luc Picard, and an 8+
+character password. Credentials are chosen locally at initialization,
+salted and hashed; never commit actual credentials. User-chosen weak or
+themed codes are permissible solely under this deliberate LOCAL TRUST model.
+Do NOT expose port 8082 to the internet or untrusted LAN. This password
+does not authenticate VM102 storm-control messages, grant Linux root access,
+or protect the Victron BMS. Server plan messages need independently
+authenticated transport before any physical actuation.
 
-First inspect and back up the ACTUAL production Pi. Never overwrite its newer
-controller code with the public GitHub controller snapshot.
+## Charging and storm logic retained on the server
 
-On an isolated TEST copy of the Pi config and scratch state directory,
-initialize the admin password with the operator portal's init-password
-command. Then point the read-only operator process at test paths:
+The 4-hour charging safety margin, 12-hour post-last-accumulation hold,
+ice/snow/wind thresholds, time windows, polling, taper-learning settings,
+maintenance hold, and other normal operating parameters remain independently
+configurable. GREPmox should continuously compute the learned time to actual
+SmartShunt full charge and use:
 
-    python3 src/operator_cycle.py --once \
-      --config /test/controller.json \
-      --learning-db /test/charge-learning.sqlite \
-      --latch-db /test/storm-latch.sqlite \
-      --forecast-file /test/nws-forecast.json \
-      --alerts-file /test/nws-alerts.json
+    charging deadline = learned remaining hours + configured storm buffer
 
-For continuous automatic learning and weather checks only AFTER the
-site coordinates AND an identifying application/contact User-Agent are
-configured and permissions reviewed, add --loop --fetch-nws. In that mode,
-the local status is sampled every configured
-learning_poll_seconds (60 by default) and official NWS weather/active alerts
-are fetched every configured check_interval_minutes (15 by default). The
-output mode is an advisory, never an electrical instruction. The downloaded
-forecast and alert snapshots are local-only files written atomically.
+After the forecasted accumulation and the independently configured recovery
+window have elapsed, VM102 can propose returning to normal. If VM102 fails,
+the Pi instead invokes the normal-mode fallback described above. Commander
+can override storm mode locally when necessary.
 
-The NWS forecast and alert files are written atomically. A network error
-retains the last saved file, but age checks prevent stale data from being
-treated as fresh. SQLite histories and the active storm latch survive
-process restarts and are not automatically discarded when data disappears.
+The earlier proof-of-concept modules src/charge_monitor.py,
+src/charge_learning.py, src/nws_client.py, src/storm_watch.py,
+src/storm_latch.py and src/operator_cycle.py remain for reuse/refactor,
+but Pi-side automatic looping is disabled in operator_cycle.py. They are
+NOT the selected production scheduling architecture.
 
-## Remaining production blockers
+## Deployment and acceptance gates
 
-1. Inspect the real deployed Venus OS controller, its 10-day maintenance and
-   post-full balancing logic, and live JSON schema. Preserve newer fixes.
-2. Confirm true 600-Ah bank rating and *attainable* AC/DC charge rate, limits,
-   usable charging path and whether SmartShunt full event timing is reliable.
-3. Run manual read-only training against real completed full-charge sessions.
-   Observe real absorption taper, slow finishes, missing telemetry and restarts.
-4. Validate official NWS grid accumulation periods and live active alerts for
-   the actual Boomer HQ coordinates. No coordinates are hard-coded.
-5. Test the local Pi's atomic state ownership, filesystem persistence and
-   ability to boot and operate without VM102, internet or WireGuard.
-6. Integrate a tightly scoped Pi-side pass-through/grid-charge request with
-   authentication, manual override and local electrical safety precedence.
-   Do NOT apply this repo snapshot directly over the running controller.
-7. Test actual AC outage, battery discharge, failed full-charge event,
-   storm-duration extension, multi-day weather, and safe post-storm exit
-   under on-site operator supervision before enabling any actuation.
+1. Confirm the physical Pi/Venus OS installed files, preserve current
+   SmartShunt 60-minute maintenance hold and 20% emergency protections.
+2. Confirm VM102 actual HDD vs SSD backing storage and telemetry paths;
+   make server read-only collection and storm learning work there.
+3. Implement authenticated VM102 plan delivery, Pi heartbeat/freshness
+   checks, replay resistance, and local electrical safety precedence.
+4. Add a dedicated, confirmed Commander manual override to the Pi local
+   GUI. Keep the ordinary display view-only otherwise.
+5. Independently test four scenarios: healthy VM/storm, server loss during
+   charging, server loss during storm/pass-through, and local manual override
+   while server and internet are down.
+6. Verify that exactly the prior normal SOC behaviour resumes after the
+   300-second default timeout. Test alternative timeout values, Pi reboot,
+   grid loss, return of AC and restoration of VM plan after failover.
+7. Only after local hardware tests, enable actual inverter transitions.
 
-CI tests use Python simulation, scratch SQLite DBs, and offline NWS fixtures.
-They do not establish that a real inverter will charge or change mode safely.
-
-## Weather API identity and staged status
-
-The official NWS API expects an identifying User-Agent with a contact path.
-Neither site coordinates nor contact information is fabricated or committed
-as a live default. They are optional GUI fields until the administrator enters
-real values. Continuous weather fetching cannot initialize successfully
-without them. The test suite uses offline fixtures only and DOES NOT confirm
-that the NWS endpoint accepts a real site request or that the Pi can reach it.
-
-This source branch implements learning, repeatable weather evaluation, a
-restart-persistent latch and mode recommendations. It does NOT yet integrate
-those recommendations into the newer deployed Venus OS controller, install
-a system service, issue a Grid Charging command, issue a Pass Through command,
-or test a physical Victron charger. The original running system is unchanged.
+GitHub Actions success means unit tests passed, not that field deployment
+or any Victron electrical action occurred.
