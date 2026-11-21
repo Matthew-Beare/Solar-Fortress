@@ -48,6 +48,10 @@ The defaults are editable via the authenticated GUI:
 - Allowed sampling gap: 20 minutes
 - Sample spacing: 60 seconds
 - Minimum positive battery net charge current: 1 amp
+- Near-full taper allowance: keep an existing charge session active at or
+  above 95% SOC even if measured battery current falls to -2 amps (both
+  thresholds independently editable); only a SmartShunt full event can end
+  that session successfully
 - Minimum SOC gain for a session: 5 percentage points
 - Optional bank capacity in Ah, conservative DC current cap in amps, and
   separate manual finishing-time allowance while the model is untrained
@@ -106,8 +110,11 @@ command. Then point the read-only operator process at test paths:
 
 For continuous automatic learning and weather checks only AFTER the
 site coordinates are configured and permissions reviewed, add --loop
---fetch-nws. The process only GETs localhost Pi status and official NWS;
-the output mode is an advisory, never an electrical instruction.
+--fetch-nws. In that mode, the local status is sampled every configured
+learning_poll_seconds (60 by default) and official NWS weather/active alerts
+are fetched every configured check_interval_minutes (15 by default). The
+output mode is an advisory, never an electrical instruction. The downloaded
+forecast and alert snapshots are local-only files written atomically.
 
 The NWS forecast and alert files are written atomically. A network error
 retains the last saved file, but age checks prevent stale data from being
