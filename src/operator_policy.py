@@ -213,18 +213,19 @@ def storm_decision(now, forecast_periods, raw):
             # Only a storm that is underway or starts within the advance
             # warning horizon can cause a request. Forecast accumulation
             # may then continue over a longer 24-hour assessment period.
-            anchors = [now]
-            anchors.extend(max(now, start) for start, end, value in intervals
-                           if start < lead_end and end > now and value > 0)
-            if len(anchors) == 1 and not any(
-                    start < lead_end and end > now for start, end, _ in intervals):
+            visible = [(start, end, value) for start, end, value in intervals
+                       if start < lead_end and end > now]
+            if not visible:
                 unknown.append(kind)
                 continue
-            observed = max(
+            anchors = [max(now, start) for start, end, value in visible if value > 0]
+            # A zero-precipitation forecast inside the lead window is not
+            # evidence that precipitation starting beyond it has arrived.
+            observed = max((
                 sum(value for start, end, value in intervals
                     if start < anchor + accumulate and end > anchor)
                 for anchor in anchors
-            )
+            ), default=0.0)
         if observed >= policy[kind][metric]:
             reasons.append(kind)
     return {
