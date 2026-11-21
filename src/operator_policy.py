@@ -37,6 +37,12 @@ DEFAULTS = {
         "learning_taper_min_current_amps": -2.0,
         "learning_min_soc_gain_percent": 5.0,
     },
+    "commander_full_charge": {
+        "enabled": True,
+        "default_hold_hours": 12,
+        "max_hold_hours": 168,
+        "charge_attempt_timeout_hours": 72,
+    },
     "maintenance": {
         "enabled": True,
         "full_charge_interval_days": 10,
@@ -106,6 +112,22 @@ def validate_config(raw):
     for timer in ("pass_through", "grid_charge", "stop_grid_charge"):
         qualification[timer] = whole(qualification[timer], timer + " qualification", 1, 3600)
     out["qualification_seconds"] = qualification
+
+    commander = out.get("commander_full_charge", {})
+    if not isinstance(commander, dict):
+        raise ValueError("commander_full_charge must be an object")
+    commander = {**DEFAULTS["commander_full_charge"], **commander}
+    if not isinstance(commander["enabled"], bool):
+        raise ValueError("Commander full-charge control must be boolean")
+    for key, low, high in (
+        ("default_hold_hours", 0, 168),
+        ("max_hold_hours", 1, 168),
+        ("charge_attempt_timeout_hours", 1, 168),
+    ):
+        commander[key] = whole(commander[key], key, low, high)
+    if commander["default_hold_hours"] > commander["max_hold_hours"]:
+        raise ValueError("Default manual hold exceeds the permitted maximum")
+    out["commander_full_charge"] = commander
 
     maintenance = out.get("maintenance", {})
     if not isinstance(maintenance, dict):
