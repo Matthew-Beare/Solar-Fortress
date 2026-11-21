@@ -64,8 +64,10 @@ class PortalTests(unittest.TestCase):
         password = "a-very-long-operator-secret"
         form = {"csrf": "wrong", "grid_charge": 20, "grid_pass_through": 30,
                 "battery_return": 35, "full_charge_interval_days": 10,
-                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 48, "confirmation_hours": 24, "charge_margin_hours": 4, "accumulation_hours": 24, "check_interval_minutes": 15,
+                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24, "target_soc": 100, "reserve_soc": 90,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
+                "snow_immediate_threshold": "", "ice_immediate_threshold": 0.5,
+                "wind_immediate_threshold": "",
                 "storm_enabled": "on", "snow_enabled": "on", "ice_enabled": "on"}
         status, _ = self.request("POST", "/settings", form, password)
         self.assertEqual(status, 403)
@@ -75,6 +77,11 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(status, 200)
         saved = json.loads(self.config.read_text())
         self.assertTrue(saved["storm"]["enabled"])
+        self.assertEqual(saved["storm"]["watch_hours"], 8)
+        self.assertEqual(saved["storm"]["charge_margin_hours"], 8)
+        self.assertEqual(saved["storm"]["ice"]["immediate_threshold_inches"], 0.5)
+        self.assertEqual(saved["storm"]["target_soc"], 100)
+        self.assertEqual(saved["storm"]["reserve_soc"], 90)
         self.assertEqual(saved["maintenance"]["request_repeat_days"], 4)
         self.assertTrue(saved["preserve"]["deployed_feature"])
         self.assertEqual(self.config.stat().st_mode & 0o777, 0o640)
@@ -85,8 +92,9 @@ class PortalTests(unittest.TestCase):
         form = {"csrf": json.loads(self.auth.read_text())["csrf"],
                 "grid_charge": 32, "grid_pass_through": 30, "battery_return": 35,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
-                "lookahead_hours": 12, "watch_hours": 48, "confirmation_hours": 24, "charge_margin_hours": 4, "accumulation_hours": 24, "check_interval_minutes": 15, "snow_threshold": 6, "ice_threshold": .25,
-                "wind_threshold": ""}
+                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24, "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
+                "wind_threshold": "", "snow_immediate_threshold": "",
+                "ice_immediate_threshold": 0.5, "wind_immediate_threshold": ""}
         status, _ = self.request("POST", "/settings", form, password)
         self.assertEqual(status, 400)
         self.assertEqual(self.config.read_bytes(), original)
