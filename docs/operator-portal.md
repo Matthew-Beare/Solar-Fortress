@@ -39,8 +39,11 @@ The portal preserves unrelated JSON keys while editing:
 - Emergency grid charge, pass-through and battery return SOC thresholds
 - Full-charge maintenance interval (default 10 days)
 - Retry request interval (default 4 days)
-- Storm Mode enabled/disabled, storm-onset lookahead (default 12 hours)
-- Snow and ice accumulation evaluation period (default rolling 24 hours), separate from the warning lead
+- Storm Mode enabled/disabled, immediate storm-onset lookahead (default 12 hours)
+- Early Storm Watch lead (default 48 hours, configurable 12 to 120 hours)
+- Forecast comparison delay (default 24 hours, configurable 1 to 48 hours)
+- Charge-time safety margin (default 4 hours, configurable 0 to 48 hours)
+- Snow and ice accumulation evaluation period (default rolling 24 hours), separate from warning lead
 - Forecast check interval (default 15 minutes; editable 5 to 120 minutes)
 - Per-condition snow (6 in), ice (0.25 in), wind (disabled by default)
 - Storm target 100%, storm reserve 90% stored as policy defaults
@@ -51,6 +54,24 @@ scheduler belongs on the Boomer HQ telemetry server and still needs to be
 deployed, then linked to this configuration without granting uncontrolled
 hardware access. A positive accumulation forecast that begins after the lead
 horizon must not trigger merely because a 24-hour total is high.
+
+
+A separate pure planning module, src/storm_watch.py, watches for a qualifying
+event inside the 48-hour watch and can compare the event's type and predicted
+onset against a snapshot taken at least 24 hours earlier. Confirmation
+requires distinct official NWS updateTime values; merely rereading a cached
+forecast is not independent confirmation.
+
+The planner recommends a charge when the event is confirmed OR if a conservative
+minimum charging-time estimate plus the configured margin reaches the time to
+forecast onset. Thus it may recommend charging before 24-hour confirmation
+when waiting would risk an undercharged battery. This is still advisory code.
+NWS source accuracy, charger capabilities, available AC and SmartShunt data
+must be verified before implementing a real state-changing request.
+
+Do not end an existing storm latch just because the next forecast is clear.
+The live controller must own persistent storm state, manual override, hold
+and safe release logic separately. No such actuator is installed here.
 
 The portal writes settings atomically and attempts to preserve existing file
 owner and mode. It does not restart the controller. The current public
