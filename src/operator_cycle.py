@@ -123,6 +123,12 @@ def main():
     parser.add_argument("--alerts-file", default=DEFAULT_ALERTS)
     parser.add_argument("--loop", action="store_true")
     args = parser.parse_args()
+    if args.loop or args.fetch_nws:
+        raise SystemExit(
+            "Pi-side automatic weather/learning loop superseded. "
+            "Run forecasting and charge-history storage on boomer-solar VM102; "
+            "use the Pi-local server-plan supervisor and manual fallback instead."
+        )
     last_nws_attempt = None
     while True:
         delay = 60
