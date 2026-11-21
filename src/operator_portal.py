@@ -110,6 +110,7 @@ def parse_settings(form, original):
     }
     merged["maintenance"] = {
         **merged.get("maintenance", {}),
+        "enabled": "maintenance_enabled" in form,
         "full_charge_interval_days": int(form["full_charge_interval_days"][0]),
         "request_repeat_days": int(form["request_repeat_days"][0]),
         "post_full_hold_minutes": int(form["post_full_hold_minutes"][0]),
@@ -231,6 +232,7 @@ def make_handler(config_path, auth_path):
                     optional_field("planning_dc_charge_amps", charge["planning_dc_charge_amps"], step="0.1"),
                     field("finishing_allowance_minutes", charge["finishing_allowance_minutes"]), '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
+                    check("maintenance_enabled", maint["enabled"]),
                     field("full_charge_interval_days", maint["full_charge_interval_days"]),
                     field("request_repeat_days", maint["request_repeat_days"]),
                     field("post_full_hold_minutes", maint["post_full_hold_minutes"]), '</fieldset>',
