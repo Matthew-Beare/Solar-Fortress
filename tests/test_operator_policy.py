@@ -24,6 +24,7 @@ class OperatorPolicyTests(unittest.TestCase):
         self.assertEqual(p["storm"]["check_interval_minutes"], 15)
         self.assertEqual(p["maintenance"]["request_repeat_days"], 4)
         self.assertEqual(p["maintenance"]["post_full_hold_minutes"], 60)
+        self.assertTrue(p["maintenance"]["enabled"])
         self.assertEqual(p["qualification_seconds"]["grid_charge"], 60)
 
     def test_preserve_existing_keys(self):
@@ -163,6 +164,15 @@ class OperatorPolicyTests(unittest.TestCase):
             validate_config({"storm": {"ice": {"immediate_threshold_inches": 0.1}}})
         with self.assertRaises(ValueError):
             validate_config({"storm": {"reserve_soc": 100, "target_soc": 90}})
+
+    def test_maintenance_can_be_disabled_and_full_hold_set_to_zero(self):
+        now = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
+        cfg = validate_config({"maintenance": {"enabled": False,
+                                                "post_full_hold_minutes": 0}})
+        self.assertEqual(cfg["maintenance"]["post_full_hold_minutes"], 0)
+        self.assertFalse(maintenance_request_due(now, None, None, cfg))
+        with self.assertRaises(ValueError):
+            validate_config({"maintenance": {"post_full_hold_minutes": -1}})
 
     def test_adjustable_controller_qualification_and_maintenance_hold(self):
         policy = validate_config({
