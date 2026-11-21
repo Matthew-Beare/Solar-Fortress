@@ -46,6 +46,54 @@ class OperatorPolicyTests(unittest.TestCase):
         self.assertEqual(result["reasons"], ["ice"])
         self.assertEqual(result["unknown"], ["snow"])
 
+    def test_rolling_twelve_hours_enters_as_storm_approaches(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        policy = validate_config({"storm": {"enabled": True, "lookahead_hours": 12}})
+        period = {
+            "start": (now + dt.timedelta(hours=13)).isoformat(),
+            "end": (now + dt.timedelta(hours=15)).isoformat(),
+            "ice_inches": 0.35,
+        }
+        self.assertFalse(storm_decision(now, [period], policy)["active"])
+        # Two hours later the same forecast is now inside the rolling window.
+        result = storm_decision(now + dt.timedelta(hours=2), [period], policy)
+        self.assertTrue(result["active"])
+        self.assertEqual(result["reasons"], ["ice"])
+
+    def test_ice_accumulates_across_hours(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        policy = validate_config({"storm": {"enabled": True}})
+        periods = [
+            {"start": now + dt.timedelta(hours=3), "end": now + dt.timedelta(hours=5), "ice_inches": .15},
+            {"start": now + dt.timedelta(hours=5), "end": now + dt.timedelta(hours=7), "ice_inches": .12},
+        ]
+        self.assertEqual(storm_decision(now, periods, policy)["reasons"], ["ice"])
+        # No additional storm event may be counted outside the lookahead.
+        self.assertFalse(storm_decision(now - dt.timedelta(hours=15), periods, policy)["active"])
+
+    def test_overlapping_accumulation_periods_rejected(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        policy = validate_config({"storm": {"enabled": True}})
+        periods = [
+            {"start": now, "end": now + dt.timedelta(hours=3), "snow_inches": 4},
+            {"start": now + dt.timedelta(hours=2), "end": now + dt.timedelta(hours=5), "snow_inches": 4},
+        ]
+        with self.assertRaises(ValueError):
+            storm_decision(now, periods, policy)
+
+    def test_conservative_partial_interval_and_wind_max(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        policy = validate_config({"storm": {
+            "enabled": True, "wind": {"enabled": True, "threshold_mph": 55}
+        }})
+        periods = [
+            {"start": now + dt.timedelta(hours=11), "end": now + dt.timedelta(hours=17),
+             "ice_inches": .27, "wind_mph": 35},
+            {"start": now + dt.timedelta(hours=3), "end": now + dt.timedelta(hours=4),
+             "wind_mph": 60},
+        ]
+        self.assertEqual(storm_decision(now, periods, policy)["reasons"], ["ice", "wind"])
+
     def test_maintenance_uses_smartshunt_event_and_retry(self):
         now = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
         p = validate_config({})
