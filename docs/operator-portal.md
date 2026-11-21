@@ -1,143 +1,112 @@
-# Solar Fortress Operator Controls (staged, not deployed)
+# Solar Fortress operator and Commander controls (STAGED, NOT DEPLOYED)
 
-This branch contains a conservative settings foundation for the Venus OS Pi.
-It does NOT write to the inverter, install itself as a service, or enable
-automatic storm charging. The deployed Pi controller is newer than this
-repository snapshot: reconcile the current live files before deployment.
+The Pi's running Venus OS controller contains newer maintenance fixes than
+the public GitHub baseline. Never replace it with this feature branch without
+inspecting live files and testing the actual hardware. All controls below are
+source code and offline tests, NOT proof of inverter actuation.
 
-## Separate privileges and network boundary
+## Access model
 
-- The existing dashboard is intended to remain view-only for Commander Boomer.
-- The operator portal is a separate HTTP listener at 127.0.0.1:8082 only.
-- Do not port-forward 8082 from the router or bind it to 0.0.0.0.
-- Access the portal from a trusted administrator through an SSH tunnel,
-  such as local port 18082 forwarded to Pi loopback port 8082.
-- Initial administrator password is entered locally using the init-password
-  command and never hard-coded or committed. It is scrypt-hashed with a
-  random salt. The user can change it on the protected settings screen.
-- POST requests require a CSRF token. No settings endpoint is exposed to
-  the anonymous status/dashboard viewer.
-- At present, 8082 uses HTTP over loopback/SSH, not public HTTPS.
+### First-run superuser enrollment (127.0.0.1:8082)
 
-## Startup on a TEST copy of the Pi filesystem
+The Pi administrator settings site runs only on loopback behind the trusted
+administrator's SSH tunnel. It does NOT bind to the public internet.
 
-Review the actual deployed controller files first and save a backup. Do
-not replace production src/ or controller.json with the old Git version.
+When the operator-auth.json file does not exist, the first visit to the root
+page shows a Create First Superuser form with:
+- chosen username (1–64 characters, NO preselected login);
+- password field (8–256 characters, NOT an eight-character maximum);
+- retype/confirm password field.
 
-1. Create a test directory and copy the actual controller.json into it.
-2. Run operator_portal.py init-password with --auth and --config set to the
-   test directory's file paths. Enter a 14+ character password.
-3. Start operator_portal.py serve with the same paths and a free port.
-4. Use an SSH tunnel to access the local web page. Verify both viewer
-   isolation and successful authenticated access.
-5. Run test_operator_policy.py and test_operator_portal.py regressions before
-   attempting any production integration.
+Two entered passwords must match. The credentials are hashed using salted
+scrypt, never written in plaintext. On successful first registration, the
+enrollment route is permanently closed while the account file exists.
+All subsequent settings visits require that chosen name and password.
+Password rotation requires the current password plus the new password
+entered TWICE. Any migration/recovery must be explicitly handled by a
+trusted administrator, not by making the registration URL public.
 
-## Saved data and behavioural boundaries
+Start against a test copy using the serve action of src/operator_portal.py
+with --config /test/controller.json --auth /test/operator-auth.json.
+There is no hard-coded account/password or required CLI init-password flow.
+This web login is only a barrier against accidental settings changes; it
+is NOT the authentication for GREPmox-to-Pi storm plans or Linux root.
 
-The portal preserves unrelated JSON keys while editing:
-- Emergency grid charge, pass-through and battery return SOC thresholds
-- Pass-through, grid-charge and stop-charge qualification timers (default 60 seconds each)
-- Full-charge maintenance enabled/disabled (enabled by default)
-- Full-charge maintenance interval (default 10 days)
-- Retry request interval (default 4 days)
-- Hold after verified SmartShunt full-charge (default 60 minutes; editable 0 to 1440 minutes, including OFF at zero; staged schema pending deployed Pi integration)
-- Nominal bank capacity (Ah) for planning: optional and editable after verification
-- Conservative DC charging-current cap (A): optional and editable, NOT hardware control
-- Additional finishing-time allowance (minutes): default 0, separately editable
-- Storm Mode enabled/disabled, immediate storm-onset lookahead (default 12 hours)
-- Early Storm Watch lead (default 48 hours, configurable 1 to 120 hours; 8 works)
-- Forecast comparison delay (default 24 hours, configurable 1 to 48 hours)
-- Charge-time safety margin (default 4 hours, configurable 0 to 48 hours; 8 works independently)
-- Snow and ice accumulation evaluation period (default rolling 24 hours), separate from warning lead
-- Forecast check interval (default 15 minutes; editable 5 to 120 minutes)
-- Immediate forecast horizon (default 24 hours, independently editable)
-- Severe ice override: 0.50 inches in the immediate forecast horizon (editable)
-- Optional severe snow and wind overrides, each editable or disabled
-- Per-condition snow (6 in), ice (0.25 in), wind (disabled by default)
-- Storm target SOC 100% and storm reserve SOC 90%, each editable inside validated bounds
+### Commander Boomer no-login control (staged 127.0.0.1:8083)
 
-The policy stage evaluates the forward-looking accumulation window each time it
-is called. It does NOT automatically poll NWS every 15 minutes yet. That
-scheduler belongs on the Boomer HQ telemetry server and still needs to be
-deployed, then linked to this configuration without granting uncontrolled
-hardware access. A positive accumulation forecast that begins after the lead
-horizon must not trigger merely because a 24-hour total is high.
+Commander must NOT need to log in for a manual full-charge request.
+src/commander_portal.py stages a separate private-page implementation.
+It has two narrowly scoped actions:
+- Request Full Charge: choose how many hours to hold FULL after an actual,
+  NEW SmartShunt full-charge event; explicit checkbox confirmation required.
+  Default 12 hours, max 168 hours, both admin editable.
+- Cancel Full Charge Request: stops only that manual intervention and returns
+  the mode decision to existing local/server policy.
 
+The POST forms use anti-CSRF tokens. Another request cannot silently reset
+or extend an active hold; Commander must cancel it or check the explicit
+replace-existing-request box. This prevents accidental double taps.
 
-A separate pure planning module, src/storm_watch.py, watches for a qualifying
-event inside the 48-hour watch and can compare the event's type and predicted
-onset against a snapshot taken at least 24 hours earlier. Confirmation
-requires distinct official NWS updateTime values; merely rereading a cached
-forecast is not independent confirmation.
+The no-login page must be embedded in the normal dashboard or assigned an
+explicit trusted private-LAN bind address at deployment. Never port-forward
+this interface to the internet or give it general BMS/inverter settings access.
+No general non-admin account or password is required.
 
-Historical confirmation is informational, never a prerequisite for charging.
-The planner reevaluates the freshest weather, latest SOC, and attainable charger
-current every time it runs. It recommends charging if: (1) severe ice reaches
-0.50 inches within the next 24 hours (or another enabled urgent threshold),
-(2) a qualified event has persisted in different NWS forecast revisions,
-or (3) time to onset is less than or equal to estimated charging duration
-plus the editable four-hour margin. A 14-hour charging estimate creates an
-18-hour planning deadline with a four-hour buffer and a 22-hour deadline
-with an eight-hour buffer. A narrow watch length cannot block the urgent
-24-hour forecast override. This remains advisory code.
-NWS source accuracy, charger capabilities, available AC and SmartShunt data
-must be verified before implementing a real state-changing request.
+src/commander_full_charge.py stores a one-shot change in a local file:
+- Requested charging runs until SmartShunt confirms a new full event or
+  charge_attempt_timeout_hours elapses (default 72 hours).
+- The user-selected hold begins at the verified full charge, not button press.
+- The hold expires automatically; 0 hours means finish immediately at full.
+- Old full-charge timestamps and server loss cannot fake a new full charge.
+- State changes persist across reboot. Repeated status polling does not write
+  periodically to the Pi microSD. All outputs are READ-ONLY ADVISORIES.
 
-Do not end an existing storm latch just because the next forecast is clear.
-The live controller must own persistent storm state, manual override, hold
-and safe release logic separately. No such actuator is installed here.
+The physical Pi controller electrical actuator and embedding in the existing
+port 8081 dashboard are NOT yet implemented. This branch cannot start a
+real charge.
 
-The portal writes settings atomically and attempts to preserve existing file
-owner and mode. It does not restart the controller. The current public
-controller reads threshold settings at startup. The newer deployed maintenance
-controller must be inspected to map its actual configuration schema and to
-apply settings safely. Storm Mode in this branch remains non-actuating; there
-is no Pi command endpoint for the server.
+### Every storm override expires
 
-A forecast window is not a charging-time guarantee. A system with 600 Ah
-capacity and 50 actual DC charging amperes needs a minimum 7.2 hours to
-replenish 40% to 100% SOC, before absorption taper and concurrent loads.
+src/pi_storm_supervisor.py requires absolute expiry times on local manual
+Storm Mode overrides, including forced charge and forced pass-through.
+Default local manual duration is 24 hours; maximum is 168 hours, both
+editable in the superuser GUI. Explicit renewal is necessary to extend.
 
-## Safety and recovery
+GREPmox plans also have issued_at and expires_at; they expire by default
+after 300 seconds unless refreshed with a new authenticated plan. Expired
+manual/storm plans fall back to the existing Pi normal SOC policy, unless
+a separate still-valid local override is in force.
 
-- Keep BMS safety settings and hardware protections outside the edit screen.
-- Refuse inconsistent thresholds (charge < pass-through < return).
-- Treat missing NWS data as unknown, never as zero or evidence of safety.
-- Never infer a completed maintenance charge from a timeout or darkness.
-- Store the true last-full-charge event from the SmartShunt independently.
-- Use dry-run decisions and controlled tests before any automatic actuator.
-- The Pi must continue safely without GREPmox, Internet, WireGuard or this
-  portal; any server-issued request needs authenticated, narrow Pi validation.
+The manual full-charge request has its OWN attempt and post-full expiry.
+It takes precedence over a valid VM storm recommendation but cannot override
+inverter AC-loss handling, BMS, SOC safety limits, or hardware rules.
 
-Master storm disable is authoritative: it turns off severe overrides too.
-Configuration is not applied to the real Pi until a separate validated
-integration and hardware test. Safety/BMS/inverter limits are not GUI knobs.
+## Other adjustable settings
 
-The new qualification and post-full hold parameters are staged using the
-public controller's qualification_seconds schema and a prospective maintenance
-post_full_hold_minutes key. They are not proof that the newer deployed Pi
-currently consumes those fields. Verify its actual installed schema first.
+The protected GUI validates and persists:
+- SOC charge/pass-through/return thresholds and qualification timers;
+- maintenance full-charge cadence, retries and post-full balancing hold;
+- SmartShunt learning, history retention, SOC matching, taper-current
+  settings, conservative multiplier, battery bank capacity and planning rate;
+- Storm Watch periods, forecast confirmation, snow/ice/wind thresholds,
+  weather polling, freshness, NWS point and winter alerts;
+- charge-time safety buffer, storm recovery duration, event joining,
+  storm target/reserve SOC and server heartbeat expiry;
+- Commander full-charge enable, default/max hold and charge-attempt timeout.
 
-## Charge-time model and balancing hold distinction
+The ordinary settings can be changed without manually editing source code.
+BMS, hardware current/wiring constraints and protections cannot be disabled
+through the GUI.
 
-A charging plan computes the remaining amp-hours from current SmartShunt SOC,
-nominal battery capacity, and a verified attainable DC charging current. The
-operator can save capacity and a conservative planning-current cap in the
-protected GUI. If site inputs are unavailable, an explicitly configured value
-can produce a **labelled assumption**, but it does not mean the system has
-measured its true charging curve. A lower configured current caps the caller's
-provided rate to avoid optimistic forecasts. Additional finishing time, if
-set, is added before the storm safety margin. At the default zero finishing
-allowance, 12 hours of estimated bulk charging + 4 hours of reserve = start
-when the storm is 16 hours away.
+## Canonical server/Pi split
 
-The post-full hold is a DIFFERENT timer: by default 60 minutes after an
-actual SmartShunt full-charge event. It is not silently combined with the
-storm safety margin. Holding at full SOC does not by itself prove cell
-balancing has completed; battery manufacturer's BMS rules still apply.
+The chosen production design is an offline Raspberry Pi with VM102 owning
+forecast/charging-history learning and issuing only short-lived, authenticated
+private-LAN plans. The Pi controls Victron hardware and returns to normal SOC
+policy if GREPmox disappears. The earlier continuous Pi weather-polling
+prototype is superseded and cannot run in loop mode.
 
-There is currently no deployed code automatically deriving a validated
-charge-time model from observed full charge sessions, AC source availability,
-concurrent loads, and the absorption/taper phase. Do not claim real-time
-full-charge prediction until the running Pi is integrated and field-tested.
+No authenticated VM-to-Pi transport, real admin enrollment, Commander-facing
+dashboard control or electrical charge actuator is deployed merely because
+the source simulations pass. Validate the installed code, reboot persistence,
+server outage and real Victron transitions before enabling physical actions.
