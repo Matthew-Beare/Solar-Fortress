@@ -38,9 +38,10 @@ not replace production src/ or controller.json with the old Git version.
 The portal preserves unrelated JSON keys while editing:
 - Emergency grid charge, pass-through and battery return SOC thresholds
 - Pass-through, grid-charge and stop-charge qualification timers (default 60 seconds each)
+- Full-charge maintenance enabled/disabled (enabled by default)
 - Full-charge maintenance interval (default 10 days)
 - Retry request interval (default 4 days)
-- Hold after verified SmartShunt full-charge (default 60 minutes; saved schema pending deployed Pi integration)
+- Hold after verified SmartShunt full-charge (default 60 minutes; editable 0 to 1440 minutes, including OFF at zero; staged schema pending deployed Pi integration)
 - Nominal bank capacity (Ah) for planning: optional and editable after verification
 - Conservative DC charging-current cap (A): optional and editable, NOT hardware control
 - Additional finishing-time allowance (minutes): default 0, separately editable
