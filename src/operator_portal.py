@@ -111,6 +111,9 @@ def parse_settings(form, original):
     storm = {**current}
     storm["enabled"] = "storm_enabled" in form
     storm["lookahead_hours"] = int(form["lookahead_hours"][0])
+    storm["watch_hours"] = int(form["watch_hours"][0])
+    storm["confirmation_hours"] = int(form["confirmation_hours"][0])
+    storm["charge_margin_hours"] = int(form["charge_margin_hours"][0])
     storm["accumulation_hours"] = int(form["accumulation_hours"][0])
     storm["check_interval_minutes"] = int(form["check_interval_minutes"][0])
     for kind, field in (
@@ -197,6 +200,9 @@ def make_handler(config_path, auth_path):
                     '<fieldset><legend>Storm Mode (staged, not actuating)</legend>',
                     check("storm_enabled", storm["enabled"]),
                     field("lookahead_hours", storm["lookahead_hours"]),
+                    field("watch_hours", storm["watch_hours"]),
+                    field("confirmation_hours", storm["confirmation_hours"]),
+                    field("charge_margin_hours", storm["charge_margin_hours"]),
                     field("accumulation_hours", storm["accumulation_hours"]),
                     field("check_interval_minutes", storm["check_interval_minutes"]),
                     check("snow_enabled", storm["snow"]["enabled"]),
