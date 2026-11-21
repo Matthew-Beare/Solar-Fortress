@@ -25,12 +25,14 @@ from commander_full_charge import (
     begin_full_charge, cancel_full_charge, describe_full_charge,
 )
 from operator_policy import validate_config
+from pi_storm_supervisor import read_manual_override, set_manual_mode
 from operator_portal import load_json
 import datetime as dt
 
 UTC = dt.timezone.utc
 DEFAULT_CONFIG = "/data/solar-fortress/config/controller.json"
 DEFAULT_STATE = "/data/solar-fortress/state/commander-full-charge.json"
+DEFAULT_STORM_STATE = "/data/solar-fortress/state/commander-storm-override.json"
 MAX_POST = 2048
 
 
@@ -45,7 +47,9 @@ def checked_bind_address(value):
     return str(host)
 
 
-def make_handler(config_path, state_path):
+def make_handler(config_path, state_path, storm_state_path=None):
+    storm_state_path = (Path(storm_state_path) if storm_state_path is not None
+                        else Path(state_path).parent / "commander-storm-override.json")
     csrf = secrets.token_urlsafe(32)
     lock = threading.RLock()
 
@@ -71,6 +75,8 @@ def make_handler(config_path, state_path):
                 config = validate_config(load_json(config_path))
                 commander = config["commander_full_charge"]
                 status = describe_full_charge(state_path, dt.datetime.now(UTC))
+                override = read_manual_override(storm_state_path, dt.datetime.now(UTC))
+                storm_policy = config["storm"]
                 enabled = commander["enabled"]
                 token = html.escape(csrf, quote=True)
                 message = (
@@ -117,13 +123,46 @@ def make_handler(config_path, state_path):
                     )
                 else:
                     message += '<p>Full-charge requests are disabled by the administrator.</p>'
-                message += '<p>The controller remains subject to local AC and BMS limits.</p>'
+                message += (
+                    '<hr><h2>Manual Storm Mode</h2>'
+                    '<p>This overrides the server temporarily. Every override expires '
+                    'automatically unless explicitly renewed.</p>'
+                    '<p>Current manual mode: <strong>' +
+                    html.escape(override["mode"].replace("_", " ")) +
+                    '</strong></p>'
+                )
+                if override.get("expires_at"):
+                    message += (
+                        '<p>Override expires: ' +
+                        html.escape(override["expires_at"]) + '</p>'
+                    )
+                message += (
+                    '<form method="post" action="/storm-mode">'
+                    '<input type="hidden" name="csrf" value="' + token + '">'
+                    '<label>Choose mode <select name="mode">'
+                    '<option value="storm_charge">Storm: Grid Charge</option>'
+                    '<option value="storm_pass_through">Storm: Pass-Through</option>'
+                    '<option value="normal">Normal SOC Policy</option>'
+                    '<option value="automatic">Cancel Manual Override / Use Server</option>'
+                    '</select></label>'
+                    '<label>Override duration (hours) '
+                    '<input type="number" name="duration_hours" min="1" max="' +
+                    str(storm_policy["manual_override_max_hours"]) +
+                    '" value="' + str(storm_policy["manual_override_default_hours"]) +
+                    '" step="1" required></label>'
+                    '<label><input type="checkbox" name="renew" value="yes">'
+                    'Explicitly renew the current override</label>'
+                    '<label><input type="checkbox" name="confirm" value="yes" required>'
+                    'I confirm this time-limited storm override</label>'
+                    '<button type="submit">Apply Temporary Storm Mode</button></form>'
+                )
+                message += '<p>Electrical safety protections always take precedence.</p>'
                 self.reply(200, message)
             except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
                 self.reply(503, "Status unavailable: " + html.escape(str(exc)))
 
         def do_POST(self):
-            if self.path not in ("/request", "/cancel"):
+            if self.path not in ("/request", "/cancel", "/storm-mode"):
                 return self.reply(404, "Not found")
             if (self.headers.get("Content-Type", "").split(";")[0].strip() !=
                     "application/x-www-form-urlencoded"):
@@ -140,7 +179,8 @@ def make_handler(config_path, state_path):
                 if form.get("confirm") != ["yes"]:
                     return self.reply(400, "Confirm this action before submitting")
                 settings = validate_config(load_json(config_path))
-                if not settings["commander_full_charge"]["enabled"]:
+                if self.path in ("/request", "/cancel") and (
+                        not settings["commander_full_charge"]["enabled"]):
                     return self.reply(403, "Request control disabled by administrator")
                 with lock:
                     now = dt.datetime.now(UTC)
@@ -150,12 +190,28 @@ def make_handler(config_path, state_path):
                             state_path, now, hold, settings, confirmed=True,
                             replace_existing=(form.get("replace") == ["yes"]),
                         )
-                    else:
+                    elif self.path == "/cancel":
                         result = cancel_full_charge(state_path, now, confirmed=True)
+                    else:
+                        mode = form["mode"][0]
+                        hours = int(form["duration_hours"][0])
+                        changed = set_manual_mode(
+                            storm_state_path, mode, confirmed=True, now=now,
+                            duration_hours=hours,
+                            max_hours=settings["storm"]["manual_override_max_hours"],
+                            renew=(form.get("renew") == ["yes"]),
+                        )
+                        active = read_manual_override(storm_state_path, now)
+                        result = {
+                            "phase": ("changed" if changed else "already_active"),
+                            "override_expires_at": active.get("expires_at"),
+                        }
+                detail = (" Expires: " + html.escape(result["override_expires_at"])
+                          if result.get("override_expires_at") else "")
                 self.reply(
                     200, "<p>Request recorded: " + html.escape(result["phase"]) +
-                    ".</p><p>Awaiting controller integration before physical "
-                    "charging is enabled.</p><a href='/'>Return to status</a>"
+                    "." + detail + "</p><p>Awaiting controller integration before "
+                    "physical commands are enabled.</p><a href='/'>Return to status</a>"
                 )
             except (ValueError, TypeError, IndexError, KeyError, OSError) as exc:
                 self.reply(400, "Request rejected: " + html.escape(str(exc)))
@@ -170,12 +226,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=DEFAULT_CONFIG)
     parser.add_argument("--state", default=DEFAULT_STATE)
+    parser.add_argument("--storm-state", default=DEFAULT_STORM_STATE)
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8083)
     args = parser.parse_args()
     address = checked_bind_address(args.bind)
     ThreadingHTTPServer((address, args.port),
-                        make_handler(Path(args.config), Path(args.state))).serve_forever()
+                        make_handler(Path(args.config), Path(args.state),
+                                     Path(args.storm_state))).serve_forever()
 
 
 if __name__ == "__main__":
