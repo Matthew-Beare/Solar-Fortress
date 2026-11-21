@@ -15,6 +15,8 @@ class OperatorPolicyTests(unittest.TestCase):
         p = validate_config({})
         self.assertFalse(p["storm"]["enabled"])
         self.assertEqual(p["storm"]["lookahead_hours"], 12)
+        self.assertEqual(p["storm"]["accumulation_hours"], 24)
+        self.assertEqual(p["storm"]["check_interval_minutes"], 15)
         self.assertEqual(p["maintenance"]["request_repeat_days"], 4)
 
     def test_preserve_existing_keys(self):
@@ -93,6 +95,43 @@ class OperatorPolicyTests(unittest.TestCase):
              "wind_mph": 60},
         ]
         self.assertEqual(storm_decision(now, periods, policy)["reasons"], ["ice", "wind"])
+
+    def test_two_windows_and_configurable_poll(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        # Ice starts 8h away. Two successive readings total 0.27 inches
+        # inside 24h despite the second one starting beyond the 12h lead.
+        intervals = [
+            {"start": now + dt.timedelta(hours=8), "end": now + dt.timedelta(hours=10),
+             "ice_inches": 0.15},
+            {"start": now + dt.timedelta(hours=14), "end": now + dt.timedelta(hours=16),
+             "ice_inches": 0.12},
+        ]
+        conf = validate_config({"storm": {"enabled": True}})
+        result = storm_decision(now, intervals, conf)
+        self.assertEqual(result["reasons"], ["ice"])
+        self.assertEqual(result["lookahead_hours"], 12)
+        self.assertEqual(result["accumulation_hours"], 24)
+        self.assertEqual(result["check_interval_minutes"], 15)
+        # If 12h is mistakenly used as the total accumulation interval,
+        # the second piece would be missed and this should NOT trigger.
+        shorter = validate_config({"storm": {"enabled": True, "accumulation_hours": 4,
+                                               "check_interval_minutes": 30}})
+        result = storm_decision(now, intervals, shorter)
+        self.assertFalse(result["active"])
+        self.assertEqual(result["check_interval_minutes"], 30)
+
+    def test_no_early_trigger_for_storm_beginning_after_lead(self):
+        now = dt.datetime(2026, 11, 21, 0, tzinfo=dt.timezone.utc)
+        period = {"start": now + dt.timedelta(hours=13),
+                  "end": now + dt.timedelta(hours=15), "ice_inches": 0.7}
+        policy = validate_config({"storm": {"enabled": True}})
+        self.assertFalse(storm_decision(now, [period], policy)["active"])
+        self.assertTrue(storm_decision(now + dt.timedelta(hours=2), [period], policy)["active"])
+
+    def test_reject_out_of_range_polling_cadence(self):
+        for interval in (0, 4, 121, 15.5, True):
+            with self.assertRaises(ValueError):
+                validate_config({"storm": {"check_interval_minutes": interval}})
 
     def test_maintenance_uses_smartshunt_event_and_retry(self):
         now = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
