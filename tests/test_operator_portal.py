@@ -82,7 +82,7 @@ class PortalTests(unittest.TestCase):
                 "learning_min_soc_gain_percent": 5.0,
                 "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
-                "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "target_soc": 100, "reserve_soc": 90,
+                "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "nws_user_agent": "Solar-Fortress/1.0 (test@example.invalid)", "target_soc": 100, "reserve_soc": 90,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
                 "snow_immediate_threshold": "", "ice_immediate_threshold": 0.5,
                 "wind_immediate_threshold": "",
@@ -107,6 +107,7 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(saved["storm"]["post_storm_hold_hours"], 18)
         self.assertEqual(saved["storm"]["max_forecast_age_hours"], 6)
         self.assertIsNone(saved["storm"]["forecast_latitude"])
+        self.assertIn("test@example.invalid", saved["storm"]["nws_user_agent"])
         self.assertTrue(saved["charge_estimate"]["learning_enabled"])
         self.assertEqual(saved["charge_estimate"]["learning_min_sessions"], 2)
         self.assertEqual(saved["charge_estimate"]["learning_poll_seconds"], 60)
@@ -142,7 +143,7 @@ class PortalTests(unittest.TestCase):
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
                 "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
-                "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
+                "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "nws_user_agent": "Solar-Fortress/1.0 (test@example.invalid)", "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
                 "wind_threshold": "", "snow_immediate_threshold": "",
                 "ice_immediate_threshold": 0.5, "wind_immediate_threshold": ""}
         status, _ = self.request("POST", "/settings", form, password)
