@@ -64,7 +64,7 @@ class PortalTests(unittest.TestCase):
         password = "a-very-long-operator-secret"
         form = {"csrf": "wrong", "grid_charge": 20, "grid_pass_through": 30,
                 "battery_return": 35, "full_charge_interval_days": 10,
-                "request_repeat_days": 4, "lookahead_hours": 12, "accumulation_hours": 24, "check_interval_minutes": 15,
+                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 48, "confirmation_hours": 24, "charge_margin_hours": 4, "accumulation_hours": 24, "check_interval_minutes": 15,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
                 "storm_enabled": "on", "snow_enabled": "on", "ice_enabled": "on"}
         status, _ = self.request("POST", "/settings", form, password)
@@ -85,7 +85,7 @@ class PortalTests(unittest.TestCase):
         form = {"csrf": json.loads(self.auth.read_text())["csrf"],
                 "grid_charge": 32, "grid_pass_through": 30, "battery_return": 35,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
-                "lookahead_hours": 12, "accumulation_hours": 24, "check_interval_minutes": 15, "snow_threshold": 6, "ice_threshold": .25,
+                "lookahead_hours": 12, "watch_hours": 48, "confirmation_hours": 24, "charge_margin_hours": 4, "accumulation_hours": 24, "check_interval_minutes": 15, "snow_threshold": 6, "ice_threshold": .25,
                 "wind_threshold": ""}
         status, _ = self.request("POST", "/settings", form, password)
         self.assertEqual(status, 400)
