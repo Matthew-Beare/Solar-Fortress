@@ -128,41 +128,94 @@ def maintenance_request_due(now, last_full_charge, last_request, raw):
     return now - last_request >= dt.timedelta(days=config["request_repeat_days"])
 
 
-def storm_decision(now, forecast_periods, raw):
-    """Evaluate normalized *period totals*, not fabricated hourly data.
+def _aware_time(value):
+    """Accept NWS ISO timestamps or aware datetimes; reject naive inputs."""
+    if isinstance(value, str):
+        try:
+            value = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("Invalid forecast timestamp") from exc
+    if not isinstance(value, dt.datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("Timezone-aware forecast time required")
+    return value
 
-    Each period must provide timezone-aware start/end and explicitly available
-    snow_inches, ice_inches, wind_mph values. Missing measurements stay unknown.
+
+def storm_decision(now, forecast_periods, raw):
+    """Evaluate a rolling forward window, intended to run on EVERY refresh.
+
+    The ice and snow conditions use the combined amount across forecast
+    intervals intersecting [now, now + lookahead]. Wind uses the maximum
+    forecast gust. Unlike comparing a single period, 0.15 + 0.12 inches of
+    ice is enough to trip a 0.25-inch threshold.
+
+    When an accumulation interval partly overlaps the window, its FULL
+    forecast amount counts conservatively, not an invented hourly split.
+    This can trigger early: the NWS does not promise that precipitation is
+    spread evenly within that interval.
+
+    This is a read-only instantaneous trigger. The future Pi controller
+    MUST persist a Storm Mode latch; it must not end an active storm merely
+    because its forecast shifts outside the lookahead or the API goes down.
     """
     policy = validate_config(raw)["storm"]
     if not policy["enabled"]:
         return {"active": False, "reasons": [], "unknown": [], "enabled": False}
-    if now.tzinfo is None:
-        raise ValueError("Timezone-aware time required")
-    end_window = now + dt.timedelta(hours=policy["lookahead_hours"])
-    reasons, observed = [], set()
+    now = _aware_time(now)
+    window_end = now + dt.timedelta(hours=policy["lookahead_hours"])
+    quantities = {"snow": [], "ice": [], "wind": []}
+    lookup = (
+        ("snow", "snow_inches"),
+        ("ice", "ice_inches"),
+        ("wind", "wind_mph"),
+    )
     for period in forecast_periods:
-        start, end = period["start"], period["end"]
-        if start.tzinfo is None or end.tzinfo is None or start >= end:
+        start = _aware_time(period["start"])
+        end = _aware_time(period["end"])
+        if start >= end:
             raise ValueError("Invalid forecast period")
-        if start >= end_window or end <= now:
+        if start >= window_end or end <= now:
             continue
-        for kind, key, metric in (
-            ("snow", "snow_inches", "threshold_inches"),
-            ("ice", "ice_inches", "threshold_inches"),
-            ("wind", "wind_mph", "threshold_mph"),
-        ):
+        for kind, key in lookup:
             if not policy[kind]["enabled"]:
                 continue
             value = period.get(key)
             if value is None:
                 continue
-            measured = number(value, key, 0, 500)
-            observed.add(kind)
-            if measured >= policy[kind][metric] and kind not in reasons:
-                reasons.append(kind)
-    unknown = [kind for kind in ("snow", "ice", "wind") if policy[kind]["enabled"] and kind not in observed]
-    return {"active": bool(reasons), "reasons": reasons, "unknown": unknown, "enabled": True}
+            amount = number(value, key, 0, 500)
+            quantities[kind].append((start, end, amount))
+
+    reasons, unknown = [], []
+    for kind, metric in (
+        ("snow", "threshold_inches"),
+        ("ice", "threshold_inches"),
+        ("wind", "threshold_mph"),
+    ):
+        if not policy[kind]["enabled"]:
+            continue
+        intervals = sorted(quantities[kind], key=lambda item: item[0])
+        if not intervals:
+            unknown.append(kind)
+            continue
+        if kind == "wind":
+            observed = max(value for _, _, value in intervals)
+        else:
+            # Numeric accumulation totals must not count overlapping
+            # intervals twice. The input must be one normalized grid layer,
+            # not duplicate hourly reconstructions.
+            for previous, following in zip(intervals, intervals[1:]):
+                if previous[1] > following[0]:
+                    raise ValueError("Overlapping " + kind + " intervals")
+            observed = sum(value for _, _, value in intervals)
+        if observed >= policy[kind][metric]:
+            reasons.append(kind)
+    return {
+        "active": bool(reasons),
+        "reasons": reasons,
+        "unknown": unknown,
+        "enabled": True,
+        "evaluated_at": now.isoformat(),
+        "lookahead_hours": policy["lookahead_hours"],
+    }
 
 
 def estimated_charge_hours(current_soc, capacity_ah, actual_dc_charge_amps, target_soc=100):
