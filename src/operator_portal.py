@@ -116,6 +116,9 @@ def parse_settings(form, original):
     storm["charge_margin_hours"] = int(form["charge_margin_hours"][0])
     storm["accumulation_hours"] = int(form["accumulation_hours"][0])
     storm["check_interval_minutes"] = int(form["check_interval_minutes"][0])
+    storm["immediate_horizon_hours"] = int(form["immediate_horizon_hours"][0])
+    storm["target_soc"] = float(form["target_soc"][0])
+    storm["reserve_soc"] = float(form["reserve_soc"][0])
     for kind, field in (
         ("snow", "threshold_inches"),
         ("ice", "threshold_inches"),
@@ -125,6 +128,9 @@ def parse_settings(form, original):
         block["enabled"] = kind + "_enabled" in form
         raw = form[kind + "_threshold"][0].strip()
         block[field] = float(raw) if raw else None
+        severe_key = "immediate_threshold_mph" if kind == "wind" else "immediate_threshold_inches"
+        severe_raw = form[kind + "_immediate_threshold"][0].strip()
+        block[severe_key] = float(severe_raw) if severe_raw else None
         storm[kind] = block
     merged["storm"] = storm
     return validate_config(merged)
@@ -180,6 +186,12 @@ def make_handler(config_path, auth_path):
                         ' <input name="' + html.escape(name) + '" type="' + typ +
                         '" step="' + step + '" value="' + html.escape(str(value)) +
                         '" required></label><p></p>')
+            def optional_field(name, value, step="0.01"):
+                text_value = "" if value is None else str(value)
+                return ('<label>' + html.escape(name.replace("_", " ").title()) +
+                        ' <input name="' + html.escape(name) + '" type="number"' +
+                        ' step="' + step + '" value="' + html.escape(text_value) +
+                        '"></label><p></p>')
             def check(name, enabled):
                 return ('<label><input type="checkbox" name="' + name + '"' +
                         (' checked' if enabled else '') + '> ' + name.replace("_", " ").title() +
@@ -205,13 +217,20 @@ def make_handler(config_path, auth_path):
                     field("charge_margin_hours", storm["charge_margin_hours"]),
                     field("accumulation_hours", storm["accumulation_hours"]),
                     field("check_interval_minutes", storm["check_interval_minutes"]),
+                    field("immediate_horizon_hours", storm["immediate_horizon_hours"]),
+                    field("target_soc", storm["target_soc"], step="0.1"),
+                    field("reserve_soc", storm["reserve_soc"], step="0.1"),
+                    '<p>Urgent weather override can recommend charging without an active watch or old forecast confirmation.</p>',
                     check("snow_enabled", storm["snow"]["enabled"]),
                     field("snow_threshold", storm["snow"]["threshold_inches"], step="0.01"),
+                    optional_field("snow_immediate_threshold", storm["snow"]["immediate_threshold_inches"]),
                     check("ice_enabled", storm["ice"]["enabled"]),
                     field("ice_threshold", storm["ice"]["threshold_inches"], step="0.01"),
+                    optional_field("ice_immediate_threshold", storm["ice"]["immediate_threshold_inches"]),
                     check("wind_enabled", storm["wind"]["enabled"]),
                     '<label>Wind threshold MPH <input name="wind_threshold" type="number" min="0.01" max="200" step="0.1" value="' +
                     html.escape(str(storm["wind"]["threshold_mph"] or "")) + '"></label>',
+                    optional_field("wind_immediate_threshold", storm["wind"]["immediate_threshold_mph"]),
                     '</fieldset><button type="submit">Save settings</button></form>',
                     '<hr><h2>Change administrator password</h2><form method="post" action="/password">',
                     '<input type="hidden" name="csrf" value="' + html.escape(token) + '">',
