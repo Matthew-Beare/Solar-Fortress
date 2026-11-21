@@ -145,6 +145,7 @@ def parse_settings(form, original):
     storm["charge_margin_hours"] = int(form["charge_margin_hours"][0])
     storm["accumulation_hours"] = int(form["accumulation_hours"][0])
     storm["check_interval_minutes"] = int(form["check_interval_minutes"][0])
+    storm["server_grace_seconds"] = int(form["server_grace_seconds"][0])
     storm["post_storm_hold_hours"] = int(form["post_storm_hold_hours"][0])
     storm["storm_event_join_hours"] = int(form["storm_event_join_hours"][0])
     storm["max_forecast_age_hours"] = int(form["max_forecast_age_hours"][0])
@@ -283,6 +284,7 @@ def make_handler(config_path, auth_path):
                     field("charge_margin_hours", storm["charge_margin_hours"]),
                     field("accumulation_hours", storm["accumulation_hours"]),
                     field("check_interval_minutes", storm["check_interval_minutes"]),
+                    field("server_grace_seconds", storm["server_grace_seconds"]),
                     field("post_storm_hold_hours", storm["post_storm_hold_hours"]),
                     field("storm_event_join_hours", storm["storm_event_join_hours"]),
                     field("max_forecast_age_hours", storm["max_forecast_age_hours"]),
