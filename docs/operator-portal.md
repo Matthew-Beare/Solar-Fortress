@@ -41,6 +41,9 @@ The portal preserves unrelated JSON keys while editing:
 - Full-charge maintenance interval (default 10 days)
 - Retry request interval (default 4 days)
 - Hold after verified SmartShunt full-charge (default 60 minutes; saved schema pending deployed Pi integration)
+- Nominal bank capacity (Ah) for planning: optional and editable after verification
+- Conservative DC charging-current cap (A): optional and editable, NOT hardware control
+- Additional finishing-time allowance (minutes): default 0, separately editable
 - Storm Mode enabled/disabled, immediate storm-onset lookahead (default 12 hours)
 - Early Storm Watch lead (default 48 hours, configurable 1 to 120 hours; 8 works)
 - Forecast comparison delay (default 24 hours, configurable 1 to 48 hours)
@@ -114,3 +117,26 @@ The new qualification and post-full hold parameters are staged using the
 public controller's qualification_seconds schema and a prospective maintenance
 post_full_hold_minutes key. They are not proof that the newer deployed Pi
 currently consumes those fields. Verify its actual installed schema first.
+
+## Charge-time model and balancing hold distinction
+
+A charging plan computes the remaining amp-hours from current SmartShunt SOC,
+nominal battery capacity, and a verified attainable DC charging current. The
+operator can save capacity and a conservative planning-current cap in the
+protected GUI. If site inputs are unavailable, an explicitly configured value
+can produce a **labelled assumption**, but it does not mean the system has
+measured its true charging curve. A lower configured current caps the caller's
+provided rate to avoid optimistic forecasts. Additional finishing time, if
+set, is added before the storm safety margin. At the default zero finishing
+allowance, 12 hours of estimated bulk charging + 4 hours of reserve = start
+when the storm is 16 hours away.
+
+The post-full hold is a DIFFERENT timer: by default 60 minutes after an
+actual SmartShunt full-charge event. It is not silently combined with the
+storm safety margin. Holding at full SOC does not by itself prove cell
+balancing has completed; battery manufacturer's BMS rules still apply.
+
+There is currently no deployed code automatically deriving a validated
+charge-time model from observed full charge sessions, AC source availability,
+concurrent loads, and the absorption/taper phase. Do not claim real-time
+full-charge prediction until the running Pi is integrated and field-tested.
