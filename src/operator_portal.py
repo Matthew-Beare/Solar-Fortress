@@ -119,7 +119,7 @@ def parse_settings(form, original):
         "enabled": "commander_full_charge_enabled" in form,
         "default_hold_hours": int(form["commander_default_hold_hours"][0]),
         "max_hold_hours": int(form["commander_max_hold_hours"][0]),
-        "charge_attempt_timeout_hours": int(form["commander_charge_attempt_timeout_hours"][0]),
+        "override_expiry_hours": int(form["commander_override_expiry_hours"][0]),
     }
     merged["maintenance"] = {
         **merged.get("maintenance", {}),
@@ -304,11 +304,11 @@ def make_handler(config_path, auth_path):
                     field("learning_min_soc_gain_percent", charge["learning_min_soc_gain_percent"], step="0.1"),
                     '</fieldset>',
                     '<fieldset><legend>Commander Boomer: no-login full charge request</legend>',
-                    '<p>Commander can request one charge and choose how many hours to stay full AFTER SmartShunt confirms full. No change to administrator settings is permitted.</p>',
+                    '<p>Commander can request grid charging immediately, then hold for the chosen time AFTER SmartShunt confirms full. If SmartShunt never registers full, the local manual command still has an absolute failsafe expiry. No change to administrator settings is permitted.</p>',
                     check("commander_full_charge_enabled", commander["enabled"]),
                     field("commander_default_hold_hours", commander["default_hold_hours"]),
                     field("commander_max_hold_hours", commander["max_hold_hours"]),
-                    field("commander_charge_attempt_timeout_hours", commander["charge_attempt_timeout_hours"]),
+                    field("commander_override_expiry_hours", commander["override_expiry_hours"]),
                     '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
                     check("maintenance_enabled", maint["enabled"]),
