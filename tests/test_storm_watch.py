@@ -65,6 +65,52 @@ class StormWatchTests(unittest.TestCase):
         self.assertFalse(severe_now_events(self.now, imminent, policy))
         self.assertEqual(self.assess(periods=imminent, config=policy)["stage"], "clear")
 
+    def test_twelve_hour_charge_four_hour_buffer_starts_at_sixteen(self):
+        storm = [{
+            "start": self.now + dt.timedelta(hours=16),
+            "end": self.now + dt.timedelta(hours=18),
+            "ice_inches": 0.3,
+        }]
+        policy = validate_config({"storm": {"enabled": True, "charge_margin_hours": 4}})
+        result = self.assess(periods=storm, soc=40, amps=30, config=policy)
+        self.assertEqual(result["estimated_bulk_charge_hours"], 12)
+        self.assertEqual(result["estimated_charge_hours"], 12)
+        self.assertEqual(result["charge_planning_hours"], 16)
+        self.assertEqual(result["trigger"], "charging_deadline")
+
+    def test_configured_model_inputs_are_not_live_measurements(self):
+        storm = [{
+            "start": self.now + dt.timedelta(hours=18),
+            "end": self.now + dt.timedelta(hours=20),
+            "ice_inches": 0.3,
+        }]
+        policy = validate_config({
+            "storm": {"enabled": True, "charge_margin_hours": 4},
+            "charge_estimate": {
+                "battery_capacity_ah": 600,
+                "planning_dc_charge_amps": 30,
+                "finishing_allowance_minutes": 60,
+            }
+        })
+        result = self.assess(periods=storm, soc=40, amps=None, config=policy)
+        self.assertEqual(result["estimated_bulk_charge_hours"], 12)
+        self.assertEqual(result["estimated_charge_hours"], 13)
+        self.assertEqual(result["charge_planning_hours"], 17)
+        self.assertEqual(result["charging_estimate_source"], "includes_operator_estimate")
+        # Limiting the plan to a conservative 20A matters even if a caller
+        # supplies a faster hypothetical charging rate.
+        slower = validate_config({
+            "storm": {"enabled": True, "charge_margin_hours": 4},
+            "charge_estimate": {
+                "battery_capacity_ah": 600,
+                "planning_dc_charge_amps": 20,
+                "finishing_allowance_minutes": 0,
+            }
+        })
+        cap = self.assess(periods=storm, soc=40, amps=30, config=slower)
+        self.assertEqual(cap["estimated_bulk_charge_hours"], 18)
+        self.assertTrue(cap["charge_recommended"])
+
     def test_four_hours_or_eight_hours_safety_margin_changes_deadline(self):
         imminent = [{
             "start": self.now + dt.timedelta(hours=22),
