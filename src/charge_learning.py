@@ -105,7 +105,8 @@ def record_observation(db_path, when, *, soc, grid_charging,
                 ).fetchall()
                 near_full = samples and max(s[1] for s in samples) >= 95.0
                 progress = soc - active[3]
-                if near and near_full and progress >= charge["learning_min_soc_gain_percent"]:
+                if (near and near_full and len(samples) >= 2 and
+                        progress >= charge["learning_min_soc_gain_percent"]):
                     duplicate = db.execute(
                         "SELECT id FROM completed_sessions "
                         "WHERE ABS(full_ts-?) <= 90 LIMIT 1", (full_ts,)
