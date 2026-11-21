@@ -1,4 +1,5 @@
 import datetime as dt
+import datetime as dt
 import http.client
 import json
 import pathlib
@@ -102,6 +103,49 @@ class CommanderPortalTests(unittest.TestCase):
             "csrf": "no-need", "hold_hours": "8", "confirm": "yes"
         })
         self.assertNotEqual(status, 200)
+
+    def test_local_manual_storm_override_expires_and_requires_renewal(self):
+        token = self.token()
+        status, body = self.request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn("Manual Storm Mode", body)
+        self.assertIn("Override duration", body)
+        self.assertEqual(self.request("POST", "/storm-mode", {
+            "csrf": token, "mode": "storm_pass_through", "duration_hours": "2"
+        })[0], 400)
+        status, body = self.request("POST", "/storm-mode", {
+            "csrf": token, "mode": "storm_pass_through",
+            "duration_hours": "2", "confirm": "yes",
+        })
+        self.assertEqual(status, 200)
+        self.assertIn("Expires:", body)
+        manual = self.state.parent / "commander-storm-override.json"
+        stored = json.loads(manual.read_text())
+        self.assertEqual(stored["mode"], "storm_pass_through")
+        self.assertIn("expires_at", stored)
+        self.assertEqual(manual.stat().st_mode & 0o777, 0o600)
+        original = manual.read_bytes()
+        status, _ = self.request("POST", "/storm-mode", {
+            "csrf": token, "mode": "storm_pass_through",
+            "duration_hours": "2", "confirm": "yes",
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(original, manual.read_bytes())
+        status, _ = self.request("POST", "/storm-mode", {
+            "csrf": token, "mode": "storm_pass_through",
+            "duration_hours": "3", "confirm": "yes", "renew": "yes",
+        })
+        self.assertEqual(status, 200)
+        self.assertNotEqual(original, manual.read_bytes())
+        expiry = dt.datetime.fromisoformat(json.loads(manual.read_text())["expires_at"])
+        from pi_storm_supervisor import read_manual_override
+        self.assertEqual(read_manual_override(manual, expiry)["mode"], "automatic")
+        status, _ = self.request("POST", "/storm-mode", {
+            "csrf": token, "mode": "automatic", "duration_hours": "1",
+            "confirm": "yes",
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(manual.read_text())["mode"], "automatic")
 
     def test_must_explicitly_bind_to_private_ipv4(self):
         for address in ("0.0.0.0", "8.8.8.8", "::", "example.com"):
