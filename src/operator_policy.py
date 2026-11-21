@@ -20,6 +20,11 @@ DEFAULTS = {
         "grid_charge": 60,
         "stop_grid_charge": 60,
     },
+    "charge_estimate": {
+        "battery_capacity_ah": None,
+        "planning_dc_charge_amps": None,
+        "finishing_allowance_minutes": 0,
+    },
     "maintenance": {
         "full_charge_interval_days": 10,
         "request_repeat_days": 4,
@@ -95,6 +100,23 @@ def validate_config(raw):
         maintenance["post_full_hold_minutes"], "post_full_hold_minutes", 1, 1440
     )
     out["maintenance"] = maintenance
+
+    charge = out.get("charge_estimate", {})
+    if not isinstance(charge, dict):
+        raise ValueError("charge_estimate must be an object")
+    charge = {**DEFAULTS["charge_estimate"], **charge}
+    if charge["battery_capacity_ah"] is not None:
+        charge["battery_capacity_ah"] = number(
+            charge["battery_capacity_ah"], "battery_capacity_ah", 1, 20000
+        )
+    if charge["planning_dc_charge_amps"] is not None:
+        charge["planning_dc_charge_amps"] = number(
+            charge["planning_dc_charge_amps"], "planning_dc_charge_amps", 0.1, 1000
+        )
+    charge["finishing_allowance_minutes"] = whole(
+        charge["finishing_allowance_minutes"], "finishing_allowance_minutes", 0, 1440
+    )
+    out["charge_estimate"] = charge
 
     storm = out.get("storm", {})
     if not isinstance(storm, dict):
