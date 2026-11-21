@@ -131,7 +131,17 @@ def record_observation(db_path, when, *, soc, grid_charging,
                         "smartshunt_full_at": dt.datetime.fromtimestamp(
                             full_ts, UTC).isoformat(),
                     }
-            ongoing = grid_charging and amps >= charge["learning_min_charge_current_amps"]
+            # The SmartShunt's net charge current can approach zero as the
+            # charger tapers near full. Preserve an existing session through
+            # this phase rather than throwing away exactly the data needed
+            # to learn its true finishing time.
+            normal_current = amps >= charge["learning_min_charge_current_amps"]
+            taper_current = (
+                active is not None and
+                soc >= charge["learning_taper_min_soc_percent"] and
+                amps >= charge["learning_taper_min_current_amps"]
+            )
+            ongoing = grid_charging and (normal_current or taper_current)
             if not ongoing:
                 _clear_active(db)
                 return {"status": "not_grid_charging", "completed": False}
