@@ -61,8 +61,11 @@ UI is accessible only on the deliberately configured private network;
 the administrator GUI remains separate and password protected.
 
 src/commander_full_charge.py stores a one-shot change in a local file:
-- Requested charging runs until SmartShunt confirms a new full event or
-  charge_attempt_timeout_hours elapses (default 72 hours).
+- Requesting full charge immediately selects the Pi's local charging advisory.
+  It has NO arbitrary target deadline to attain 100% SOC.
+- The manual override itself carries an absolute failsafe expiration,
+  default 168 hours (7 days), adjustable 1–720 hours by the superuser.
+  This stops stale commands if SmartShunt never confirms full.
 - The user-selected hold begins at the verified full charge, not button press.
 - The hold expires automatically; 0 hours means finish immediately at full.
 - Old full-charge timestamps and server loss cannot fake a new full charge.
@@ -85,8 +88,10 @@ after 300 seconds unless refreshed with a new authenticated plan. Expired
 manual/storm plans fall back to the existing Pi normal SOC policy, unless
 a separate still-valid local override is in force.
 
-The manual full-charge request has its OWN attempt and post-full expiry.
-It takes precedence over a valid VM storm recommendation but cannot override
+The manual full-charge request has its OWN failsafe lease expiry and a
+separate post-full hold expiry. Actual SmartShunt full resets its active
+expiration to full-event time plus the selected hold duration. It takes
+precedence over a valid VM storm recommendation but cannot override
 inverter AC-loss handling, BMS, SOC safety limits, or hardware rules.
 
 ## Other adjustable settings
@@ -100,7 +105,8 @@ The protected GUI validates and persists:
   weather polling, freshness, NWS point and winter alerts;
 - charge-time safety buffer, storm recovery duration, event joining,
   storm target/reserve SOC and server heartbeat expiry;
-- Commander full-charge enable, default/max hold and charge-attempt timeout.
+- Commander full-charge enable, default/max post-full hold and manual
+  override failsafe expiration (default 168 hours, max 720 hours).
 
 The ordinary settings can be changed without manually editing source code.
 BMS, hardware current/wiring constraints and protections cannot be disabled
