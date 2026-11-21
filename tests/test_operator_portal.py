@@ -70,12 +70,22 @@ class PortalTests(unittest.TestCase):
                 "post_full_hold_minutes": 75, "full_charge_interval_days": 10,
                 "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
                 "finishing_allowance_minutes": 0,
-                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24, "target_soc": 100, "reserve_soc": 90,
+                "learning_min_sessions": 2, "learning_history_sessions": 12,
+                "learning_soc_match_percent": 5.0,
+                "learning_conservative_multiplier": 1.1,
+                "learning_max_gap_minutes": 20,
+                "learning_sample_interval_seconds": 60,
+                "learning_min_charge_current_amps": 1.0,
+                "learning_min_soc_gain_percent": 5.0,
+                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
+                "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
+                "max_forecast_age_hours": 6, "target_soc": 100, "reserve_soc": 90,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
                 "snow_immediate_threshold": "", "ice_immediate_threshold": 0.5,
                 "wind_immediate_threshold": "",
                 "storm_enabled": "on", "snow_enabled": "on", "ice_enabled": "on",
-                "maintenance_enabled": "on"}
+                "maintenance_enabled": "on", "learning_enabled": "on",
+                "require_alert_clear_for_release": "on"}
         status, _ = self.request("POST", "/settings", form, password)
         self.assertEqual(status, 403)
         self.assertNotIn("storm", json.loads(self.config.read_text()))
@@ -91,6 +101,10 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(saved["charge_estimate"]["battery_capacity_ah"], 600)
         self.assertEqual(saved["charge_estimate"]["planning_dc_charge_amps"], 30)
         self.assertEqual(saved["storm"]["charge_margin_hours"], 8)
+        self.assertEqual(saved["storm"]["post_storm_hold_hours"], 18)
+        self.assertEqual(saved["storm"]["max_forecast_age_hours"], 6)
+        self.assertTrue(saved["charge_estimate"]["learning_enabled"])
+        self.assertEqual(saved["charge_estimate"]["learning_min_sessions"], 2)
         self.assertEqual(saved["storm"]["ice"]["immediate_threshold_inches"], 0.5)
         self.assertEqual(saved["storm"]["target_soc"], 100)
         self.assertEqual(saved["storm"]["reserve_soc"], 90)
@@ -109,8 +123,17 @@ class PortalTests(unittest.TestCase):
                 "post_full_hold_minutes": 60,
                 "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
                 "finishing_allowance_minutes": 0,
+                "learning_min_sessions": 2, "learning_history_sessions": 12,
+                "learning_soc_match_percent": 5.0,
+                "learning_conservative_multiplier": 1.1,
+                "learning_max_gap_minutes": 20,
+                "learning_sample_interval_seconds": 60,
+                "learning_min_charge_current_amps": 1.0,
+                "learning_min_soc_gain_percent": 5.0,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
-                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24, "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
+                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
+                "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
+                "max_forecast_age_hours": 6, "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
                 "wind_threshold": "", "snow_immediate_threshold": "",
                 "ice_immediate_threshold": 0.5, "wind_immediate_threshold": ""}
         status, _ = self.request("POST", "/settings", form, password)
