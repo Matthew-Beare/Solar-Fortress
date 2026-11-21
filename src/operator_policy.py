@@ -26,12 +26,13 @@ DEFAULTS = {
         "confirmation_hours": 24,
         "charge_margin_hours": 4,
         "accumulation_hours": 24,
+        "immediate_horizon_hours": 24,
         "check_interval_minutes": 15,
         "target_soc": 100.0,
         "reserve_soc": 90.0,
-        "snow": {"enabled": True, "threshold_inches": 6.0},
-        "ice": {"enabled": True, "threshold_inches": 0.25},
-        "wind": {"enabled": False, "threshold_mph": None},
+        "snow": {"enabled": True, "threshold_inches": 6.0, "immediate_threshold_inches": None},
+        "ice": {"enabled": True, "threshold_inches": 0.25, "immediate_threshold_inches": 0.5},
+        "wind": {"enabled": False, "threshold_mph": None, "immediate_threshold_mph": None},
     },
 }
 
@@ -88,10 +89,11 @@ def validate_config(raw):
     storm["watch_hours"] = whole(storm["watch_hours"], "watch_hours", 12, 120)
     storm["confirmation_hours"] = whole(storm["confirmation_hours"], "confirmation_hours", 1, 48)
     storm["charge_margin_hours"] = whole(storm["charge_margin_hours"], "charge_margin_hours", 0, 48)
+    storm["immediate_horizon_hours"] = whole(storm["immediate_horizon_hours"], "immediate_horizon_hours", 1, 72)
     if storm["watch_hours"] < storm["lookahead_hours"]:
-        raise ValueError("Storm watch horizon cannot be shorter than immediate lookahead")
-    if storm["watch_hours"] <= storm["confirmation_hours"]:
-        raise ValueError("Storm watch horizon must exceed confirmation delay")
+        raise ValueError("Storm watch horizon cannot be shorter than ordinary lookahead")
+    # Historical confirmation is informational, NEVER a prerequisite to charge.
+    # A storm first forecast with short warning can immediately merit action.
     storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
     storm["check_interval_minutes"] = whole(storm["check_interval_minutes"], "check_interval_minutes", 5, 120)
     storm["target_soc"] = number(storm["target_soc"], "target_soc", 90, 100)
@@ -114,6 +116,13 @@ def validate_config(raw):
             pass
         else:
             item[metric] = number(threshold, kind + "." + metric, 0.01, upper)
+        severe_field = "immediate_threshold_mph" if kind == "wind" else "immediate_threshold_inches"
+        severe = item[severe_field]
+        if severe is not None:
+            severe = number(severe, kind + "." + severe_field, 0.01, upper)
+            if item["enabled"] and severe < item[metric]:
+                raise ValueError(kind + " immediate threshold cannot be below ordinary threshold")
+        item[severe_field] = severe
         storm[kind] = item
     out["storm"] = storm
     return out
