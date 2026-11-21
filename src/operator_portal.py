@@ -141,6 +141,9 @@ def parse_settings(form, original):
     storm["post_storm_hold_hours"] = int(form["post_storm_hold_hours"][0])
     storm["storm_event_join_hours"] = int(form["storm_event_join_hours"][0])
     storm["max_forecast_age_hours"] = int(form["max_forecast_age_hours"][0])
+    for key in ("forecast_latitude", "forecast_longitude"):
+        raw = form[key][0].strip()
+        storm[key] = float(raw) if raw else None
     storm["require_alert_clear_for_release"] = "require_alert_clear_for_release" in form
     storm["immediate_horizon_hours"] = int(form["immediate_horizon_hours"][0])
     storm["target_soc"] = float(form["target_soc"][0])
@@ -270,6 +273,8 @@ def make_handler(config_path, auth_path):
                     field("post_storm_hold_hours", storm["post_storm_hold_hours"]),
                     field("storm_event_join_hours", storm["storm_event_join_hours"]),
                     field("max_forecast_age_hours", storm["max_forecast_age_hours"]),
+                    optional_field("forecast_latitude", storm["forecast_latitude"], step="0.000001"),
+                    optional_field("forecast_longitude", storm["forecast_longitude"], step="0.000001"),
                     check("require_alert_clear_for_release", storm["require_alert_clear_for_release"]),
                     field("immediate_horizon_hours", storm["immediate_horizon_hours"]),
                     field("target_soc", storm["target_soc"], step="0.1"),
