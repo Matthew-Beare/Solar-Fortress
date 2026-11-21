@@ -41,7 +41,7 @@ DEFAULTS = {
         "enabled": True,
         "default_hold_hours": 12,
         "max_hold_hours": 168,
-        "charge_attempt_timeout_hours": 72,
+        "override_expiry_hours": 168,
     },
     "maintenance": {
         "enabled": True,
@@ -119,12 +119,15 @@ def validate_config(raw):
     if not isinstance(commander, dict):
         raise ValueError("commander_full_charge must be an object")
     commander = {**DEFAULTS["commander_full_charge"], **commander}
+    # An old, staged completion deadline is obsolete. Keep the independently
+    # expiring manual override, not a target time for reaching full charge.
+    commander.pop("charge_attempt_timeout_hours", None)
     if not isinstance(commander["enabled"], bool):
         raise ValueError("Commander full-charge control must be boolean")
     for key, low, high in (
         ("default_hold_hours", 0, 168),
         ("max_hold_hours", 1, 168),
-        ("charge_attempt_timeout_hours", 1, 168),
+        ("override_expiry_hours", 1, 720),
     ):
         commander[key] = whole(commander[key], key, low, high)
     if commander["default_hold_hours"] > commander["max_hold_hours"]:
