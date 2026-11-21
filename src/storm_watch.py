@@ -165,7 +165,8 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
     require calibration before automatic electrical operation.
     """
     now = _aware_time(now)
-    policy = validate_config(config)["storm"]
+    validated = validate_config(config)
+    policy = validated["storm"]
     if not policy["enabled"]:
         return {"stage": "disabled", "charge_recommended": False,
                 "reasons": [], "confirmed_by_history": False}
@@ -198,6 +199,23 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
     confirmed = bool(matches)
     reasons = sorted({item["kind"] for item in events})
 
+    charge_model = validated["charge_estimate"]
+    # Site-configured values can be used to PLAN if no more specific model
+    # was supplied. These are unverified assumptions, not measured ETA.
+    estimate_source = "caller_supplied"
+    if capacity_ah is None and charge_model["battery_capacity_ah"] is not None:
+        capacity_ah = charge_model["battery_capacity_ah"]
+        estimate_source = "includes_operator_estimate"
+    if actual_dc_charge_amps is None and charge_model["planning_dc_charge_amps"] is not None:
+        actual_dc_charge_amps = charge_model["planning_dc_charge_amps"]
+        estimate_source = "includes_operator_estimate"
+    if (actual_dc_charge_amps is not None and
+            charge_model["planning_dc_charge_amps"] is not None):
+        # A configured rate is a CONSERVATIVE cap, not permission to exceed
+        # the independently established charger/current rating.
+        actual_dc_charge_amps = min(
+            actual_dc_charge_amps, charge_model["planning_dc_charge_amps"]
+        )
     if soc is None or capacity_ah is None or actual_dc_charge_amps is None:
         return {
             "stage": "needs_fresh_telemetry", "charge_recommended": False,
@@ -217,7 +235,9 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
     bulk_hours = estimated_charge_hours(
         current_soc, capacity_ah, actual_dc_charge_amps, policy["target_soc"]
     )
-    budget_hours = bulk_hours + policy["charge_margin_hours"]
+    finishing_hours = charge_model["finishing_allowance_minutes"] / 60.0
+    charge_hours = bulk_hours + finishing_hours
+    budget_hours = charge_hours + policy["charge_margin_hours"]
     deadline = time_left <= budget_hours
 
     # No history prerequisite. If the latest forecast indicates severe
@@ -243,6 +263,9 @@ def assess_storm_watch(now, forecast_periods, archived_snapshots, config, *,
         "event_onset": onset.isoformat(),
         "hours_until_onset": round(time_left, 2),
         "estimated_bulk_charge_hours": round(bulk_hours, 2),
+        "estimated_charge_hours": round(charge_hours, 2),
+        "finishing_allowance_hours": round(finishing_hours, 2),
+        "charging_estimate_source": estimate_source,
         "charge_planning_hours": round(budget_hours, 2),
         "history_matches": matches,
         "note": "Read-only advisory: no Pi command or storm latch implemented.",
