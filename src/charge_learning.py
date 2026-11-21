@@ -13,6 +13,7 @@ multiplier; compare against the capacity/current floor when known.
 from __future__ import annotations
 
 import datetime as dt
+from contextlib import contextmanager
 import json
 import math
 import os
@@ -28,6 +29,7 @@ def _timestamp(raw):
     return _aware_time(raw).astimezone(UTC).timestamp()
 
 
+@contextmanager
 def _open(path):
     path = Path(path)
     if path.is_symlink() or (path.exists() and not path.is_file()):
@@ -59,10 +61,9 @@ def _open(path):
             "samples_json TEXT NOT NULL)"
         )
         connection.commit()
-        return connection
-    except Exception:
+        yield connection
+    finally:
         connection.close()
-        raise
 
 
 def _clear_active(db):
