@@ -53,6 +53,8 @@ DEFAULTS = {
         "post_storm_hold_hours": 12,
         "storm_event_join_hours": 12,
         "max_forecast_age_hours": 6,
+        "forecast_latitude": None,
+        "forecast_longitude": None,
         "require_alert_clear_for_release": True,
         "target_soc": 100.0,
         "reserve_soc": 90.0,
@@ -173,6 +175,11 @@ def validate_config(raw):
     storm["post_storm_hold_hours"] = whole(storm["post_storm_hold_hours"], "post_storm_hold_hours", 0, 168)
     storm["storm_event_join_hours"] = whole(storm["storm_event_join_hours"], "storm_event_join_hours", 0, 72)
     storm["max_forecast_age_hours"] = whole(storm["max_forecast_age_hours"], "max_forecast_age_hours", 1, 24)
+    if (storm["forecast_latitude"] is None) != (storm["forecast_longitude"] is None):
+        raise ValueError("Set both forecast latitude and longitude, or neither")
+    if storm["forecast_latitude"] is not None:
+        storm["forecast_latitude"] = number(storm["forecast_latitude"], "forecast_latitude", -90, 90)
+        storm["forecast_longitude"] = number(storm["forecast_longitude"], "forecast_longitude", -180, 180)
     if not isinstance(storm["require_alert_clear_for_release"], bool):
         raise ValueError("require_alert_clear_for_release must be a boolean")
     storm["target_soc"] = number(storm["target_soc"], "target_soc", 90, 100)
