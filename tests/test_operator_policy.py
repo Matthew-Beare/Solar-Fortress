@@ -18,6 +18,8 @@ class OperatorPolicyTests(unittest.TestCase):
         self.assertEqual(p["storm"]["watch_hours"], 48)
         self.assertEqual(p["storm"]["confirmation_hours"], 24)
         self.assertEqual(p["storm"]["charge_margin_hours"], 4)
+        self.assertEqual(p["storm"]["immediate_horizon_hours"], 24)
+        self.assertEqual(p["storm"]["ice"]["immediate_threshold_inches"], 0.5)
         self.assertEqual(p["storm"]["accumulation_hours"], 24)
         self.assertEqual(p["storm"]["check_interval_minutes"], 15)
         self.assertEqual(p["maintenance"]["request_repeat_days"], 4)
@@ -147,6 +149,18 @@ class OperatorPolicyTests(unittest.TestCase):
         for interval in (0, 4, 121, 15.5, True):
             with self.assertRaises(ValueError):
                 validate_config({"storm": {"check_interval_minutes": interval}})
+
+    def test_independent_watch_and_timer_settings(self):
+        p = validate_config({"storm": {"watch_hours": 8, "lookahead_hours": 12,
+                                       "confirmation_hours": 24, "charge_margin_hours": 8}})
+        self.assertEqual(p["storm"]["watch_hours"], 8)
+        self.assertEqual(p["storm"]["charge_margin_hours"], 8)
+        with self.assertRaises(ValueError):
+            validate_config({"storm": {"watch_hours": 0}})
+        with self.assertRaises(ValueError):
+            validate_config({"storm": {"ice": {"immediate_threshold_inches": 0.1}}})
+        with self.assertRaises(ValueError):
+            validate_config({"storm": {"reserve_soc": 100, "target_soc": 90}})
 
     def test_maintenance_uses_smartshunt_event_and_retry(self):
         now = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
