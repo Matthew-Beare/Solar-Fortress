@@ -69,12 +69,18 @@ def load_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def password_record(password):
-    if not isinstance(password, str) or not 14 <= len(password) <= 256:
-        raise ValueError("Administrator password must contain 14 to 256 characters")
+def password_record(password, username="admin"):
+    # Deliberately a local accidental-edit guard, NOT the server-plan trust
+    # credential. Always keep this web listener on Pi loopback/SSH only.
+    if not isinstance(password, str) or not 8 <= len(password) <= 256:
+        raise ValueError("Administrator password must contain 8 to 256 characters")
+    if (not isinstance(username, str) or not 1 <= len(username) <= 64
+            or ":" in username or any(ord(ch) < 32 for ch in username)):
+        raise ValueError("Invalid administrator username")
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(password.encode(), salt=salt, n=16384, r=8, p=1)
     return {
+        "username": username,
         "salt": base64.b64encode(salt).decode(),
         "digest": base64.b64encode(digest).decode(),
         "csrf": secrets.token_urlsafe(32),
@@ -192,7 +198,9 @@ def make_handler(config_path, auth_path):
             try:
                 candidate = base64.b64decode(header[6:], validate=True).decode("utf-8")
                 username, colon, password = candidate.partition(":")
-                return colon == ":" and username == "admin" and verify_password(password, load_json(auth_path))
+                record = load_json(auth_path)
+                return (colon == ":" and username == record.get("username", "admin")
+                        and verify_password(password, record))
             except (ValueError, UnicodeError, OSError):
                 return False
 
@@ -301,7 +309,7 @@ def make_handler(config_path, auth_path):
                     '<hr><h2>Change administrator password</h2><form method="post" action="/password">',
                     '<input type="hidden" name="csrf" value="' + html.escape(token) + '">',
                     '<label>Current password <input type="password" name="current" required></label><p></p>',
-                    '<label>New password, 14+ characters <input type="password" name="new" minlength="14" required></label><p></p>',
+                    '<label>New password, 8+ characters <input type="password" name="new" minlength="8" required></label><p></p>',
                     '<button type="submit">Change password</button></form>']
             self.reply(200, "\n".join(page))
 
@@ -325,7 +333,7 @@ def make_handler(config_path, auth_path):
                     if self.path == "/password":
                         if not verify_password(form["current"][0], auth):
                             return self.reply(403, "Current password incorrect", "text/plain")
-                        new_auth = password_record(form["new"][0])
+                        new_auth = password_record(form["new"][0], auth.get("username", "admin"))
                         atomic_json(auth_path, new_auth)
                         return self.reply(200, "<p>Password changed. Reload and authenticate with the new password.</p>")
                     config = load_json(config_path)
@@ -346,16 +354,18 @@ def main():
     parser.add_argument("action", choices=["init-password", "serve"])
     parser.add_argument("--config", default=DEFAULT_CONFIG)
     parser.add_argument("--auth", default=DEFAULT_AUTH)
+    parser.add_argument("--username", default="admin",
+                        help="Local operator login display/username; no hard-coded password")
     parser.add_argument("--port", type=int, default=8082)
     args = parser.parse_args()
     if args.action == "init-password":
         if Path(args.auth).exists():
             raise SystemExit("Password already initialised. Change it through the admin page.")
-        password = getpass.getpass("Set administrator password (14+ chars): ")
+        password = getpass.getpass("Set local administrator password (8+ chars): ")
         confirm = getpass.getpass("Repeat password: ")
         if password != confirm:
             raise SystemExit("Passwords do not match")
-        atomic_json(args.auth, password_record(password))
+        atomic_json(args.auth, password_record(password, args.username))
         print("Operator password initialised. Never expose port 8082 to the LAN.")
         return
     if not Path(args.auth).is_file():
