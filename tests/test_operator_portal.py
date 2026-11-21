@@ -67,7 +67,9 @@ class PortalTests(unittest.TestCase):
                 "pass_through_qualification_seconds": 60,
                 "grid_charge_qualification_seconds": 60,
                 "stop_grid_charge_qualification_seconds": 60,
-                "post_full_hold_minutes": 60, "full_charge_interval_days": 10,
+                "post_full_hold_minutes": 75, "full_charge_interval_days": 10,
+                "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
+                "finishing_allowance_minutes": 0,
                 "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24, "target_soc": 100, "reserve_soc": 90,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
                 "snow_immediate_threshold": "", "ice_immediate_threshold": 0.5,
@@ -83,7 +85,9 @@ class PortalTests(unittest.TestCase):
         self.assertTrue(saved["storm"]["enabled"])
         self.assertEqual(saved["storm"]["watch_hours"], 8)
         self.assertEqual(saved["qualification_seconds"]["pass_through"], 60)
-        self.assertEqual(saved["maintenance"]["post_full_hold_minutes"], 60)
+        self.assertEqual(saved["maintenance"]["post_full_hold_minutes"], 75)
+        self.assertEqual(saved["charge_estimate"]["battery_capacity_ah"], 600)
+        self.assertEqual(saved["charge_estimate"]["planning_dc_charge_amps"], 30)
         self.assertEqual(saved["storm"]["charge_margin_hours"], 8)
         self.assertEqual(saved["storm"]["ice"]["immediate_threshold_inches"], 0.5)
         self.assertEqual(saved["storm"]["target_soc"], 100)
@@ -101,6 +105,8 @@ class PortalTests(unittest.TestCase):
                 "grid_charge_qualification_seconds": 60,
                 "stop_grid_charge_qualification_seconds": 60,
                 "post_full_hold_minutes": 60,
+                "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
+                "finishing_allowance_minutes": 0,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
                 "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24, "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
                 "wind_threshold": "", "snow_immediate_threshold": "",
