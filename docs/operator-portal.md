@@ -36,12 +36,18 @@ is NOT the authentication for GREPmox-to-Pi storm plans or Linux root.
 
 Commander must NOT need to log in for a manual full-charge request.
 src/commander_portal.py stages a separate private-page implementation.
-It has two narrowly scoped actions:
+It has two kinds of narrowly scoped controls:
 - Request Full Charge: choose how many hours to hold FULL after an actual,
   NEW SmartShunt full-charge event; explicit checkbox confirmation required.
   Default 12 hours, max 168 hours, both admin editable.
 - Cancel Full Charge Request: stops only that manual intervention and returns
   the mode decision to existing local/server policy.
+- Manual Storm Mode: select temporary storm charging, temporary storm
+  pass-through, force the existing normal SOC policy, or cancel manual mode.
+  Each requires an explicit confirmation and a selected 1–168 hour expiry
+  within the admin-configured maximum (default duration 24 hours).
+  Repeating the same mode does NOT silently renew its expiry; Commander
+  must check the deliberate renewal box.
 
 The POST forms use anti-CSRF tokens. Another request cannot silently reset
 or extend an active hold; Commander must cancel it or check the explicit
@@ -50,7 +56,9 @@ replace-existing-request box. This prevents accidental double taps.
 The no-login page must be embedded in the normal dashboard or assigned an
 explicit trusted private-LAN bind address at deployment. Never port-forward
 this interface to the internet or give it general BMS/inverter settings access.
-No general non-admin account or password is required.
+No general non-admin account or password is required. The no-login
+UI is accessible only on the deliberately configured private network;
+the administrator GUI remains separate and password protected.
 
 src/commander_full_charge.py stores a one-shot change in a local file:
 - Requested charging runs until SmartShunt confirms a new full event or
