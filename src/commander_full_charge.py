@@ -1,11 +1,13 @@
 """Commander Boomer's local, no-login request-full-charge state machine.
 
 Pure advisory. The Pi retains physical authority. Request is a one-shot
-manual intervention with (a) an absolute charging-attempt deadline, (b) a
-hold duration beginning only at a NEW SmartShunt full-charge event, and
-(c) a final expiration. No weather/Proxmox/internet is required.
+manual intervention that requests charging IMMEDIATELY, independent of
+weather/Proxmox/internet. No artificial target time to reach full exists.
+Every request carries a failsafe absolute expiry so stale manual commands
+cannot persist forever. When SmartShunt confirms a NEW full-charge event,
+the operator-selected hold begins and the expiry becomes full + hold.
 
-The state file changes only on request, completion, timeout, or cancellation.
+The state file changes only on request, completion, expiry, or cancellation.
 Reads are safe after reboot. Repeated status polls do not write the card.
 """
 from __future__ import annotations
@@ -76,11 +78,11 @@ def begin_full_charge(path, now, hold_hours, config, *, confirmed, replace_exist
     if (existing["phase"] in ("charging", "holding_full")
             and replace_existing is not True):
         raise ValueError("A full-charge request is already active. Cancel it or explicitly replace it.")
-    deadline = start + dt.timedelta(hours=settings["charge_attempt_timeout_hours"])
+    override_expiry = start + dt.timedelta(hours=settings["override_expiry_hours"])
     state = {
         "version": 1, "phase": "charging",
         "requested_at": _iso(start),
-        "charge_attempt_expires_at": _iso(deadline),
+        "override_expires_at": _iso(override_expiry),
         "hold_hours": hold,
         "smartshunt_full_at": None,
         "hold_expires_at": None,
@@ -109,17 +111,21 @@ def describe_full_charge(path, now):
         return {"phase": "idle", "request_mode": None}
     phase = state["phase"]
     clock = _time(now)
-    if phase == "charging" and clock >= _time(state["charge_attempt_expires_at"]):
-        phase = "expired"
-    if phase == "holding_full" and clock >= _time(state["hold_expires_at"]):
-        phase = "completed"
+    # Unknown/old staged requests have no valid lease and cannot resume.
+    expires_raw = state.get("override_expires_at")
+    if phase in ("charging", "holding_full"):
+        if expires_raw is None or clock >= _time(expires_raw):
+            phase = "completed" if phase == "holding_full" else "expired"
+    if phase == "holding_full" and state.get("hold_expires_at") is not None:
+        if clock >= _time(state["hold_expires_at"]):
+            phase = "completed"
     mode = ("grid_charging" if phase == "charging" else
             "full_charge_hold" if phase == "holding_full" else None)
     return {
         "phase": phase,
         "request_mode": mode,
         "requested_at": state["requested_at"],
-        "charge_attempt_expires_at": state["charge_attempt_expires_at"],
+        "override_expires_at": state.get("override_expires_at"),
         "hold_hours": state["hold_hours"],
         "smartshunt_full_at": state["smartshunt_full_at"],
         "hold_expires_at": state["hold_expires_at"],
@@ -131,15 +137,16 @@ def update_from_smartshunt(path, now, smartshunt_full_at):
     """Persist actual full completion. Never start the timer from button press.
 
     A stale last-full timestamp from before the request does not qualify.
-    An absent full event will expire the attempt at its fixed deadline.
+    An uncompleted request has no artificial target-to-full deadline; it
+    remains a local charge request until its explicit failsafe lease expires.
     """
     state = _load(path)
     if state is None or state["phase"] not in ("charging", "holding_full"):
         return describe_full_charge(path, now)
     clock = _time(now)
     if state["phase"] == "charging":
-        deadline = _time(state["charge_attempt_expires_at"])
-        if clock >= deadline:
+        lease_expiry_raw = state.get("override_expires_at")
+        if lease_expiry_raw is None or clock >= _time(lease_expiry_raw):
             state["phase"] = "expired"
             state["ended_at"] = _iso(clock)
             _write(path, state)
@@ -150,6 +157,7 @@ def update_from_smartshunt(path, now, smartshunt_full_at):
                 expires = full + dt.timedelta(hours=state["hold_hours"])
                 state["smartshunt_full_at"] = _iso(full)
                 state["hold_expires_at"] = _iso(expires)
+                state["override_expires_at"] = _iso(expires)
                 if clock >= expires:
                     state["phase"] = "completed"
                     state["ended_at"] = _iso(clock)
