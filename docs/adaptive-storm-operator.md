@@ -109,8 +109,9 @@ command. Then point the read-only operator process at test paths:
       --alerts-file /test/nws-alerts.json
 
 For continuous automatic learning and weather checks only AFTER the
-site coordinates are configured and permissions reviewed, add --loop
---fetch-nws. In that mode, the local status is sampled every configured
+site coordinates AND an identifying application/contact User-Agent are
+configured and permissions reviewed, add --loop --fetch-nws. In that mode,
+the local status is sampled every configured
 learning_poll_seconds (60 by default) and official NWS weather/active alerts
 are fetched every configured check_interval_minutes (15 by default). The
 output mode is an advisory, never an electrical instruction. The downloaded
@@ -142,3 +143,18 @@ process restarts and are not automatically discarded when data disappears.
 
 CI tests use Python simulation, scratch SQLite DBs, and offline NWS fixtures.
 They do not establish that a real inverter will charge or change mode safely.
+
+## Weather API identity and staged status
+
+The official NWS API expects an identifying User-Agent with a contact path.
+Neither site coordinates nor contact information is fabricated or committed
+as a live default. They are optional GUI fields until the administrator enters
+real values. Continuous weather fetching cannot initialize successfully
+without them. The test suite uses offline fixtures only and DOES NOT confirm
+that the NWS endpoint accepts a real site request or that the Pi can reach it.
+
+This source branch implements learning, repeatable weather evaluation, a
+restart-persistent latch and mode recommendations. It does NOT yet integrate
+those recommendations into the newer deployed Venus OS controller, install
+a system service, issue a Grid Charging command, issue a Pass Through command,
+or test a physical Victron charger. The original running system is unchanged.
