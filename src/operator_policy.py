@@ -22,6 +22,9 @@ DEFAULTS = {
     "storm": {
         "enabled": False,
         "lookahead_hours": 12,
+        "watch_hours": 48,
+        "confirmation_hours": 24,
+        "charge_margin_hours": 4,
         "accumulation_hours": 24,
         "check_interval_minutes": 15,
         "target_soc": 100.0,
@@ -82,6 +85,13 @@ def validate_config(raw):
     if not isinstance(storm["enabled"], bool):
         raise ValueError("storm.enabled must be boolean")
     storm["lookahead_hours"] = whole(storm["lookahead_hours"], "lookahead_hours", 1, 72)
+    storm["watch_hours"] = whole(storm["watch_hours"], "watch_hours", 12, 120)
+    storm["confirmation_hours"] = whole(storm["confirmation_hours"], "confirmation_hours", 1, 48)
+    storm["charge_margin_hours"] = whole(storm["charge_margin_hours"], "charge_margin_hours", 0, 48)
+    if storm["watch_hours"] < storm["lookahead_hours"]:
+        raise ValueError("Storm watch horizon cannot be shorter than immediate lookahead")
+    if storm["watch_hours"] <= storm["confirmation_hours"]:
+        raise ValueError("Storm watch horizon must exceed confirmation delay")
     storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
     storm["check_interval_minutes"] = whole(storm["check_interval_minutes"], "check_interval_minutes", 5, 120)
     storm["target_soc"] = number(storm["target_soc"], "target_soc", 90, 100)
