@@ -185,7 +185,25 @@ def parse_settings(form, original):
 
 
 def make_handler(config_path, auth_path):
+    enrollment_csrf = secrets.token_urlsafe(32)
+
     class Handler(BaseHTTPRequestHandler):
+        def enrollment_page(self):
+            token = html.escape(enrollment_csrf, quote=True)
+            page = (
+                '<!doctype html><meta charset="utf-8"><title>Solar Fortress setup</title>'
+                '<h1>Solar Fortress: create first superuser</h1>'
+                '<p>First-run enrollment works only through the trusted local administrator interface.'
+                ' It does not configure any electrical controls.</p>'
+                '<form method="post" action="/enroll">'
+                '<input type="hidden" name="csrf" value="' + token + '">'
+                '<label>Superuser name <input name="username" maxlength="64" autocomplete="username" required></label><p></p>'
+                '<label>Password <input type="password" name="password" minlength="8" maxlength="256" autocomplete="new-password" required></label><p></p>'
+                '<label>Retype password <input type="password" name="confirm" minlength="8" maxlength="256" autocomplete="new-password" required></label><p></p>'
+                '<button type="submit">Create superuser</button></form>'
+            )
+            self.reply(200, page)
+
         def reply(self, status, message, mime="text/html; charset=utf-8", extra=None):
             body = message.encode("utf-8")
             self.send_response(status)
@@ -222,6 +240,10 @@ def make_handler(config_path, auth_path):
             return False
 
         def do_GET(self):
+            if not Path(auth_path).exists():
+                if self.path in ("/", "/enroll"):
+                    return self.enrollment_page()
+                return self.reply(404, "Not found", "text/plain")
             if self.path != "/":
                 return self.reply(404, "Not found", "text/plain")
             if not self.require_login():
@@ -331,13 +353,17 @@ def make_handler(config_path, auth_path):
                     '<input type="hidden" name="csrf" value="' + html.escape(token) + '">',
                     '<label>Current password <input type="password" name="current" required></label><p></p>',
                     '<label>New password, 8+ characters <input type="password" name="new" minlength="8" required></label><p></p>',
+                    '<label>Retype new password <input type="password" name="new_confirm" minlength="8" required></label><p></p>',
                     '<button type="submit">Change password</button></form>']
             self.reply(200, "\n".join(page))
 
         def do_POST(self):
-            if self.path not in ("/settings", "/password"):
+            if self.path not in ("/settings", "/password", "/enroll"):
                 return self.reply(404, "Not found", "text/plain")
-            if not self.require_login():
+            if self.path == "/enroll":
+                if Path(auth_path).exists():
+                    return self.reply(403, "First superuser already enrolled", "text/plain")
+            elif not self.require_login():
                 return
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/x-www-form-urlencoded":
                 return self.reply(415, "Expected form data", "text/plain")
@@ -347,14 +373,33 @@ def make_handler(config_path, auth_path):
                     return self.reply(413, "Invalid form size", "text/plain")
                 form = urllib.parse.parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True, max_num_fields=96)
                 with LOCK:
-                    auth = load_json(auth_path)
                     token = form.get("csrf", [""])[0]
+                    if self.path == "/enroll":
+                        if Path(auth_path).exists():
+                            return self.reply(403, "First superuser already enrolled", "text/plain")
+                        if not hmac.compare_digest(token, enrollment_csrf):
+                            return self.reply(403, "Invalid enrollment token", "text/plain")
+                        username = form["username"][0].strip()
+                        password = form["password"][0]
+                        confirm = form["confirm"][0]
+                        if password != confirm:
+                            return self.reply(400, "Passwords do not match", "text/plain")
+                        if not password or len(password) > 256:
+                            return self.reply(400, "Invalid password length", "text/plain")
+                        atomic_json(auth_path, password_record(password, username))
+                        return self.reply(
+                            200, "<p>Superuser registered. Return to settings and sign in.</p>"
+                            "<a href='/'>Settings login</a>"
+                        )
+                    auth = load_json(auth_path)
                     if not isinstance(token, str) or not hmac.compare_digest(token, auth["csrf"]):
                         return self.reply(403, "Invalid form token", "text/plain")
                     if self.path == "/password":
                         if not verify_password(form["current"][0], auth):
                             return self.reply(403, "Current password incorrect", "text/plain")
-                        new_auth = password_record(form["new"][0], auth.get("username", "admin"))
+                        if form["new"][0] != form["new_confirm"][0]:
+                            return self.reply(400, "Passwords do not match", "text/plain")
+                        new_auth = password_record(form["new"][0], auth["username"])
                         atomic_json(auth_path, new_auth)
                         return self.reply(200, "<p>Password changed. Reload and authenticate with the new password.</p>")
                     config = load_json(config_path)
@@ -372,25 +417,13 @@ def make_handler(config_path, auth_path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["init-password", "serve"])
+    parser.add_argument("action", choices=["serve"], nargs="?", default="serve")
     parser.add_argument("--config", default=DEFAULT_CONFIG)
     parser.add_argument("--auth", default=DEFAULT_AUTH)
-    parser.add_argument("--username", default="admin",
-                        help="Local operator login display/username; no hard-coded password")
     parser.add_argument("--port", type=int, default=8082)
     args = parser.parse_args()
-    if args.action == "init-password":
-        if Path(args.auth).exists():
-            raise SystemExit("Password already initialised. Change it through the admin page.")
-        password = getpass.getpass("Set local administrator password (8+ chars): ")
-        confirm = getpass.getpass("Repeat password: ")
-        if password != confirm:
-            raise SystemExit("Passwords do not match")
-        atomic_json(args.auth, password_record(password, args.username))
-        print("Operator password initialised. Never expose port 8082 to the LAN.")
-        return
-    if not Path(args.auth).is_file():
-        raise SystemExit("Run init-password locally before starting the operator portal")
+    # When no credentials exist, the first local visit launches enrollment.
+    # An existing account never exposes a public registration endpoint.
     validate_config(load_json(args.config))
     ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(args.config, args.auth)).serve_forever()
 
