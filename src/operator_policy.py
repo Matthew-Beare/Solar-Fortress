@@ -86,12 +86,11 @@ def validate_config(raw):
     if not isinstance(storm["enabled"], bool):
         raise ValueError("storm.enabled must be boolean")
     storm["lookahead_hours"] = whole(storm["lookahead_hours"], "lookahead_hours", 1, 72)
-    storm["watch_hours"] = whole(storm["watch_hours"], "watch_hours", 12, 120)
+    storm["watch_hours"] = whole(storm["watch_hours"], "watch_hours", 1, 120)
     storm["confirmation_hours"] = whole(storm["confirmation_hours"], "confirmation_hours", 1, 48)
     storm["charge_margin_hours"] = whole(storm["charge_margin_hours"], "charge_margin_hours", 0, 48)
     storm["immediate_horizon_hours"] = whole(storm["immediate_horizon_hours"], "immediate_horizon_hours", 1, 72)
-    if storm["watch_hours"] < storm["lookahead_hours"]:
-        raise ValueError("Storm watch horizon cannot be shorter than ordinary lookahead")
+    # Immediate risk checks operate even when the optional watch is shorter.
     # Historical confirmation is informational, NEVER a prerequisite to charge.
     # A storm first forecast with short warning can immediately merit action.
     storm["accumulation_hours"] = whole(storm["accumulation_hours"], "accumulation_hours", 1, 72)
