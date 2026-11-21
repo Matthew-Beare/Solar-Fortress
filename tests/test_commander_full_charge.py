@@ -46,13 +46,32 @@ class CommanderFullChargeTests(unittest.TestCase):
         self.assertIsNone(describe_full_charge(self.path, completed_at +
                           dt.timedelta(hours=9))["request_mode"])
 
-    def test_missing_full_event_expires_request(self):
+    def test_manual_request_keeps_charging_after_old_72h_cutoff(self):
+        issued = self.begin(24)
+        self.assertEqual(issued["request_mode"], "grid_charging")
+        # Commander is requesting charge NOW, not a promise to reach full by 72h.
+        after_old_deadline = self.now + dt.timedelta(hours=100)
+        still_charging = describe_full_charge(self.path, after_old_deadline)
+        self.assertEqual(still_charging["phase"], "charging")
+        self.assertEqual(still_charging["request_mode"], "grid_charging")
+        # Every override still expires so a lost Pi/SmartShunt event cannot stick.
+        failsafe = self.now + dt.timedelta(hours=168)
+        expired = describe_full_charge(self.path, failsafe)
+        self.assertEqual(expired["phase"], "expired")
+        self.assertIsNone(expired["request_mode"])
+        self.assertEqual(update_from_smartshunt(self.path, failsafe, None)["phase"], "expired")
+
+    def test_full_event_near_failsafe_starts_complete_selected_hold(self):
         self.begin(24)
-        deadline = self.now + dt.timedelta(hours=72)
-        result = describe_full_charge(self.path, deadline)
-        self.assertEqual(result["phase"], "expired")
-        self.assertIsNone(result["request_mode"])
-        self.assertEqual(update_from_smartshunt(self.path, deadline, None)["phase"], "expired")
+        full = self.now + dt.timedelta(hours=160)
+        result = update_from_smartshunt(self.path, full, full)
+        self.assertEqual(result["phase"], "holding_full")
+        self.assertEqual(result["override_expires_at"],
+                         (full + dt.timedelta(hours=24)).isoformat())
+        self.assertEqual(describe_full_charge(self.path, self.now +
+                         dt.timedelta(hours=170))["phase"], "holding_full")
+        self.assertEqual(describe_full_charge(self.path, full +
+                         dt.timedelta(hours=24))["phase"], "completed")
 
     def test_cancel_stops_while_waiting_or_holding(self):
         self.begin(12)
@@ -96,6 +115,29 @@ class CommanderFullChargeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             begin_full_charge(self.path, self.now, 8, off, confirmed=True)
 
+    def test_failsafe_lifetime_is_independent_of_post_full_hold(self):
+        custom = validate_config({"commander_full_charge": {
+            "override_expiry_hours": 336,
+            "default_hold_hours": 8,
+            "max_hold_hours": 96,
+        }})
+        request = begin_full_charge(
+            self.path, self.now, 8, custom, confirmed=True
+        )
+        self.assertEqual(request["override_expires_at"],
+                         (self.now + dt.timedelta(hours=336)).isoformat())
+        full = self.now + dt.timedelta(hours=6)
+        result = update_from_smartshunt(self.path, full, full)
+        self.assertEqual(result["override_expires_at"],
+                         (full + dt.timedelta(hours=8)).isoformat())
+        self.assertEqual(describe_full_charge(
+            self.path, full + dt.timedelta(hours=8)
+        )["phase"], "completed")
+        with self.assertRaises(ValueError):
+            validate_config({"commander_full_charge": {
+                "override_expiry_hours": 721
+            }})
+
     def test_zero_hold_expires_immediately_after_full(self):
         self.begin(0)
         full = self.now + dt.timedelta(hours=4)
@@ -114,12 +156,12 @@ class CommanderFullChargeTests(unittest.TestCase):
     def test_max_and_default_hold_are_admin_editable(self):
         p = validate_config({"commander_full_charge": {
             "default_hold_hours": 48, "max_hold_hours": 72,
-            "charge_attempt_timeout_hours": 24
+            "override_expiry_hours": 240
         }})
         result = begin_full_charge(self.path, self.now, 72, p, confirmed=True)
         self.assertEqual(result["hold_hours"], 72)
-        self.assertEqual(result["charge_attempt_expires_at"],
-                         (self.now + dt.timedelta(hours=24)).isoformat())
+        self.assertEqual(result["override_expires_at"],
+                         (self.now + dt.timedelta(hours=240)).isoformat())
         with self.assertRaises(ValueError):
             validate_config({"commander_full_charge": {
                 "default_hold_hours": 80, "max_hold_hours": 72
