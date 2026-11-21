@@ -31,6 +31,7 @@ DEFAULTS = {
         "learning_conservative_multiplier": 1.1,
         "learning_max_gap_minutes": 20,
         "learning_sample_interval_seconds": 60,
+        "learning_poll_seconds": 60,
         "learning_min_charge_current_amps": 1.0,
         "learning_min_soc_gain_percent": 5.0,
     },
@@ -139,6 +140,7 @@ def validate_config(raw):
         ("learning_history_sessions", 1, 100),
         ("learning_max_gap_minutes", 1, 120),
         ("learning_sample_interval_seconds", 10, 3600),
+        ("learning_poll_seconds", 15, 900),
     ):
         charge[field] = whole(charge[field], field, low, high)
     for field, low, high in (
