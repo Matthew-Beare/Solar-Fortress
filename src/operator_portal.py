@@ -145,6 +145,8 @@ def parse_settings(form, original):
     for key in ("forecast_latitude", "forecast_longitude"):
         raw = form[key][0].strip()
         storm[key] = float(raw) if raw else None
+    agent = form["nws_user_agent"][0].strip()
+    storm["nws_user_agent"] = agent if agent else None
     storm["require_alert_clear_for_release"] = "require_alert_clear_for_release" in form
     storm["immediate_horizon_hours"] = int(form["immediate_horizon_hours"][0])
     storm["target_soc"] = float(form["target_soc"][0])
@@ -278,6 +280,8 @@ def make_handler(config_path, auth_path):
                     field("max_forecast_age_hours", storm["max_forecast_age_hours"]),
                     optional_field("forecast_latitude", storm["forecast_latitude"], step="0.000001"),
                     optional_field("forecast_longitude", storm["forecast_longitude"], step="0.000001"),
+                    '<label>NWS User-Agent with app/contact <input name="nws_user_agent" type="text" maxlength="160" value="' +
+                    html.escape(storm["nws_user_agent"] or "", quote=True) + '"></label><p></p>',
                     check("require_alert_clear_for_release", storm["require_alert_clear_for_release"]),
                     field("immediate_horizon_hours", storm["immediate_horizon_hours"]),
                     field("target_soc", storm["target_soc"], step="0.1"),
