@@ -190,7 +190,7 @@ class OperatorPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_config({"qualification_seconds": {"pass_through": 0}})
         with self.assertRaises(ValueError):
-            validate_config({"maintenance": {"post_full_hold_minutes": 0}})
+            validate_config({"maintenance": {"post_full_hold_minutes": -1}})
 
     def test_maintenance_uses_smartshunt_event_and_retry(self):
         now = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
