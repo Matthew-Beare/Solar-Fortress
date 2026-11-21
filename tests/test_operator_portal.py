@@ -26,7 +26,7 @@ class PortalTests(unittest.TestCase):
         }, "qualification_seconds": {"pass_through": 60, "grid_charge": 60,
                                       "stop_grid_charge": 60},
         "preserve": {"deployed_feature": True}}, mode=0o640)
-        atomic_json(self.auth, password_record("a-very-long-operator-secret"))
+        atomic_json(self.auth, password_record("a-very-long-operator-secret", "admin"))
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.config, self.auth))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -87,7 +87,7 @@ class PortalTests(unittest.TestCase):
                 "pass_through_qualification_seconds": 60,
                 "grid_charge_qualification_seconds": 60,
                 "stop_grid_charge_qualification_seconds": 60,
-                "post_full_hold_minutes": 75, "full_charge_interval_days": 10,
+                "post_full_hold_minutes": 75, "full_charge_interval_days": 10, "commander_full_charge_enabled": "on", "commander_default_hold_hours": 12, "commander_max_hold_hours": 168, "commander_charge_attempt_timeout_hours": 72,
                 "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
                 "finishing_allowance_minutes": 0,
                 "learning_min_sessions": 2, "learning_history_sessions": 12,
@@ -100,7 +100,7 @@ class PortalTests(unittest.TestCase):
                 "learning_taper_min_soc_percent": 95.0,
                 "learning_taper_min_current_amps": -2.0,
                 "learning_min_soc_gain_percent": 5.0,
-                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "server_grace_seconds": 300, "immediate_horizon_hours": 24,
+                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "server_grace_seconds": 300, "manual_override_default_hours": 24, "manual_override_max_hours": 168, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
                 "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "nws_user_agent": "Solar-Fortress/1.0 (test@example.invalid)", "target_soc": 100, "reserve_soc": 90,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
@@ -125,6 +125,9 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(saved["charge_estimate"]["planning_dc_charge_amps"], 30)
         self.assertEqual(saved["storm"]["charge_margin_hours"], 8)
         self.assertEqual(saved["storm"]["server_grace_seconds"], 300)
+        self.assertEqual(saved["storm"]["manual_override_default_hours"], 24)
+        self.assertTrue(saved["commander_full_charge"]["enabled"])
+        self.assertEqual(saved["commander_full_charge"]["default_hold_hours"], 12)
         self.assertEqual(saved["storm"]["post_storm_hold_hours"], 18)
         self.assertEqual(saved["storm"]["max_forecast_age_hours"], 6)
         self.assertIsNone(saved["storm"]["forecast_latitude"])
@@ -149,6 +152,8 @@ class PortalTests(unittest.TestCase):
                 "grid_charge_qualification_seconds": 60,
                 "stop_grid_charge_qualification_seconds": 60,
                 "post_full_hold_minutes": 60,
+                "commander_default_hold_hours": 12, "commander_max_hold_hours": 168,
+                "commander_charge_attempt_timeout_hours": 72,
                 "battery_capacity_ah": 600, "planning_dc_charge_amps": 30,
                 "finishing_allowance_minutes": 0,
                 "learning_min_sessions": 2, "learning_history_sessions": 12,
@@ -162,7 +167,7 @@ class PortalTests(unittest.TestCase):
                 "learning_taper_min_current_amps": -2.0,
                 "learning_min_soc_gain_percent": 5.0,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
-                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "server_grace_seconds": 300, "immediate_horizon_hours": 24,
+                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "server_grace_seconds": 300, "manual_override_default_hours": 24, "manual_override_max_hours": 168, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
                 "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "nws_user_agent": "Solar-Fortress/1.0 (test@example.invalid)", "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
                 "wind_threshold": "", "snow_immediate_threshold": "",
@@ -171,10 +176,54 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(self.config.read_bytes(), original)
 
+    def test_first_run_enrollment_requires_confirm_and_cannot_reopen(self):
+        self.auth.unlink()
+        status, body = self.request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn("create first superuser", body)
+        import re
+        token = re.search(r'name="csrf" value="([^"]+)"', body).group(1)
+        data = {"csrf": token, "username": "Mike Bravo Echo",
+                "password": "my-long-administrator-password",
+                "confirm": "not-the-same"}
+        status, _ = self.request("POST", "/enroll", data)
+        self.assertEqual(status, 400)
+        self.assertFalse(self.auth.exists())
+        data["confirm"] = data["password"]
+        status, _ = self.request("POST", "/enroll", data)
+        self.assertEqual(status, 200)
+        saved = json.loads(self.auth.read_text())
+        self.assertEqual(saved["username"], "Mike Bravo Echo")
+        self.assertNotIn("my-long-administrator-password", self.auth.read_text())
+        self.assertTrue(verify_password(data["password"], saved))
+        self.assertEqual(self.request("GET", "/")[0], 401)
+        self.assertEqual(self.request("POST", "/enroll", data)[0], 403)
+        login = base64.b64encode(
+            ("Mike Bravo Echo:" + data["password"]).encode()).decode()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port)
+        try:
+            conn.request("GET", "/", headers={"Authorization": "Basic " + login})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+        finally:
+            conn.close()
+
+    def test_password_rotation_must_retype_new_password(self):
+        old = "a-very-long-operator-secret"
+        token = json.loads(self.auth.read_text())["csrf"]
+        bad = {"csrf": token, "current": old,
+               "new": "fresh-secret-password-with-length",
+               "new_confirm": "different-password"}
+        status, _ = self.request("POST", "/password", bad, old)
+        self.assertEqual(status, 400)
+        self.assertTrue(verify_password(old, json.loads(self.auth.read_text())))
+
     def test_admin_password_rotation(self):
         old = "a-very-long-operator-secret"
         form = {"csrf": json.loads(self.auth.read_text())["csrf"],
-                "current": old, "new": "another-long-administrator-secret"}
+                "current": old, "new": "another-long-administrator-secret",
+                "new_confirm": "another-long-administrator-secret"}
         status, _ = self.request("POST", "/password", form, old)
         self.assertEqual(status, 200)
         self.assertEqual(self.request("GET", "/", password=old)[0], 401)
