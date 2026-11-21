@@ -21,12 +21,15 @@ import time
 from charge_learning import estimate_remaining
 from charge_monitor import decode_status, fetch_local_status, load_config, observe_once
 from operator_policy import _aware_time, validate_config
+from nws_client import fetch_weather, write_atomic_json
 from storm_latch import advance_storm_latch
 from storm_watch import assess_storm_watch
 
 DEFAULT_CONFIG = "/data/solar-fortress/config/controller.json"
 DEFAULT_CHARGE_DB = "/data/solar-fortress/state/charge-learning.sqlite"
 DEFAULT_LATCH_DB = "/data/solar-fortress/state/storm-latch.sqlite"
+DEFAULT_FORECAST = "/data/solar-fortress/state/nws-forecast.json"
+DEFAULT_ALERTS = "/data/solar-fortress/state/nws-alerts.json"
 MAX_FILE_BYTES = 1024 * 1024
 UTC = dt.timezone.utc
 
@@ -114,18 +117,39 @@ def main():
     parser.add_argument("--config", default=DEFAULT_CONFIG)
     parser.add_argument("--learning-db", default=DEFAULT_CHARGE_DB)
     parser.add_argument("--latch-db", default=DEFAULT_LATCH_DB)
-    parser.add_argument("--forecast-file", required=True)
+    parser.add_argument("--forecast-file", default=DEFAULT_FORECAST)
+    parser.add_argument("--fetch-nws", action="store_true", help="Fetch NWS using authenticated GUI location")
     parser.add_argument("--archive-file")
-    parser.add_argument("--alerts-file")
+    parser.add_argument("--alerts-file", default=DEFAULT_ALERTS)
     parser.add_argument("--loop", action="store_true")
     args = parser.parse_args()
+    last_nws_attempt = None
     while True:
         delay = 60
         try:
             config = load_config(args.config)
             delay = config["charge_estimate"]["learning_poll_seconds"]
+            now = dt.datetime.now(UTC)
+            # Weather is refreshed separately (15-minute default) while the
+            # learner samples the battery every minute. An NWS outage must
+            # never prevent the persistent latch from being reevaluated.
+            refresh = config["storm"]["check_interval_minutes"] * 60
+            if args.fetch_nws and (last_nws_attempt is None or
+                                   now.timestamp() - last_nws_attempt >= refresh):
+                last_nws_attempt = now.timestamp()
+                try:
+                    latitude = config["storm"]["forecast_latitude"]
+                    longitude = config["storm"]["forecast_longitude"]
+                    latest_forecast, latest_alerts = fetch_weather(latitude, longitude, now)
+                    write_atomic_json(args.forecast_file, latest_forecast)
+                    write_atomic_json(args.alerts_file, latest_alerts)
+                except (ValueError, TypeError, OSError, KeyError) as weather_error:
+                    print("NWS refresh unavailable: " + str(weather_error),
+                          file=sys.stderr, flush=True)
+                    # Reuse any previously saved inputs. Staleness rules on
+                    # the planner and latch prevent unsafe activation/release.
             result = evaluate_cycle(
-                dt.datetime.now(UTC), fetch_local_status(),
+                now, fetch_local_status(),
                 _read_json(args.forecast_file, {"periods": [],
                                                 "source_update_time": None}),
                 _read_json(args.archive_file, []),
