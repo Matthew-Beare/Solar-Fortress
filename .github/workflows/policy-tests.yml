@@ -18,3 +18,4 @@ jobs:
         run: |
           python -m py_compile src/operator_policy.py src/operator_portal.py
           python -m unittest discover -s tests -p 'test_operator_policy.py' -v
+          python -m unittest discover -s tests -p 'test_operator_portal.py' -v
