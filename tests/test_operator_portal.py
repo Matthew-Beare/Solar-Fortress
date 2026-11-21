@@ -60,6 +60,26 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("Maintenance request cadence", body)
 
+    def test_custom_local_picard_login_and_short_accidental_edit_guard(self):
+        auth = password_record("1A 2B 3C", username="Captain Jean-Luc Picard")
+        self.assertTrue(verify_password("1A 2B 3C", auth))
+        atomic_json(self.auth, auth)
+        # This credential is only for the isolated operator UI.
+        headers = {"Authorization": "Basic " + base64.b64encode(
+            "Captain Jean-Luc Picard:1A 2B 3C".encode()).decode()}
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request("GET", "/", headers=headers)
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+        finally:
+            conn.close()
+        with self.assertRaises(ValueError):
+            password_record("1234567")
+        with self.assertRaises(ValueError):
+            password_record("sufficient", username="invalid:login")
+
     def test_csrf_rejection_and_valid_update(self):
         password = "a-very-long-operator-secret"
         form = {"csrf": "wrong", "grid_charge": 20, "grid_pass_through": 30,
