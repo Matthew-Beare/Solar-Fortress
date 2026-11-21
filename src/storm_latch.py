@@ -8,6 +8,7 @@ No weather or alert response NEVER means safe to release.
 from __future__ import annotations
 
 import datetime as dt
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import sqlite3
@@ -21,6 +22,7 @@ def _epoch(value):
     return _aware_time(value).astimezone(UTC).timestamp()
 
 
+@contextmanager
 def _db(path):
     target = Path(path)
     if target.is_symlink() or (target.exists() and not target.is_file()):
@@ -42,10 +44,9 @@ def _db(path):
             "last_accumulation_end REAL NOT NULL, last_full_event REAL)"
         )
         db.commit()
-        return db
-    except Exception:
+        yield db
+    finally:
         db.close()
-        raise
 
 
 def _fmt(ts):
