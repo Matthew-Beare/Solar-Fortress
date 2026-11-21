@@ -58,7 +58,13 @@ Victron hardware, and wiring limits.
 Commander Boomer can also request a one-time full charge WITHOUT an account
 or login. His no-login page asks how many hours the battery should be held
 full AFTER a NEW SmartShunt full-charge event, requires confirmation, and
-provides a cancellation button. The attempt expires if full charge cannot
+provides a cancellation button. The same no-login trusted-LAN page
+now provides temporary local storm charge, storm pass-through, normal,
+and cancel-manual-override options. Each local storm selection asks for
+a duration (1 to 168 hours, subject to the superuser-configured maximum),
+requires explicit confirmation, and shows its absolute expiration. Renewing
+an existing manual mode requires a separate explicit renewal checkbox.
+The attempt expires if full charge cannot
 be confirmed (72 hours by default), and the hold expires automatically
 after the selected 0–168 hours. Both the default hold (12 hours) and maximum,
 plus the attempt timeout, are superuser-configurable. An existing request
