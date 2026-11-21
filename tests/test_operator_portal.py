@@ -77,6 +77,8 @@ class PortalTests(unittest.TestCase):
                 "learning_sample_interval_seconds": 60,
                 "learning_poll_seconds": 60,
                 "learning_min_charge_current_amps": 1.0,
+                "learning_taper_min_soc_percent": 95.0,
+                "learning_taper_min_current_amps": -2.0,
                 "learning_min_soc_gain_percent": 5.0,
                 "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
@@ -108,6 +110,7 @@ class PortalTests(unittest.TestCase):
         self.assertTrue(saved["charge_estimate"]["learning_enabled"])
         self.assertEqual(saved["charge_estimate"]["learning_min_sessions"], 2)
         self.assertEqual(saved["charge_estimate"]["learning_poll_seconds"], 60)
+        self.assertEqual(saved["charge_estimate"]["learning_taper_min_soc_percent"], 95.0)
         self.assertEqual(saved["storm"]["ice"]["immediate_threshold_inches"], 0.5)
         self.assertEqual(saved["storm"]["target_soc"], 100)
         self.assertEqual(saved["storm"]["reserve_soc"], 90)
@@ -133,6 +136,8 @@ class PortalTests(unittest.TestCase):
                 "learning_sample_interval_seconds": 60,
                 "learning_poll_seconds": 60,
                 "learning_min_charge_current_amps": 1.0,
+                "learning_taper_min_soc_percent": 95.0,
+                "learning_taper_min_current_amps": -2.0,
                 "learning_min_soc_gain_percent": 5.0,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
                 "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
