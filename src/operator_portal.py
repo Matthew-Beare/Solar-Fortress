@@ -120,6 +120,13 @@ def parse_settings(form, original):
         raw = form[key][0].strip()
         charge[key] = float(raw) if raw else None
     charge["finishing_allowance_minutes"] = int(form["finishing_allowance_minutes"][0])
+    charge["learning_enabled"] = "learning_enabled" in form
+    for key in ("learning_min_sessions", "learning_history_sessions",
+                "learning_max_gap_minutes", "learning_sample_interval_seconds"):
+        charge[key] = int(form[key][0])
+    for key in ("learning_soc_match_percent", "learning_conservative_multiplier",
+                "learning_min_charge_current_amps", "learning_min_soc_gain_percent"):
+        charge[key] = float(form[key][0])
     merged["charge_estimate"] = charge
     current = validate_config(original)["storm"]
     storm = {**current}
@@ -130,6 +137,10 @@ def parse_settings(form, original):
     storm["charge_margin_hours"] = int(form["charge_margin_hours"][0])
     storm["accumulation_hours"] = int(form["accumulation_hours"][0])
     storm["check_interval_minutes"] = int(form["check_interval_minutes"][0])
+    storm["post_storm_hold_hours"] = int(form["post_storm_hold_hours"][0])
+    storm["storm_event_join_hours"] = int(form["storm_event_join_hours"][0])
+    storm["max_forecast_age_hours"] = int(form["max_forecast_age_hours"][0])
+    storm["require_alert_clear_for_release"] = "require_alert_clear_for_release" in form
     storm["immediate_horizon_hours"] = int(form["immediate_horizon_hours"][0])
     storm["target_soc"] = float(form["target_soc"][0])
     storm["reserve_soc"] = float(form["reserve_soc"][0])
@@ -230,7 +241,17 @@ def make_handler(config_path, auth_path):
                     '<p>Leave unknown values blank. A configured charging current is a conservative upper cap, NOT an inverter current-limit command. Live verified measurements take priority for the battery model.</p>',
                     optional_field("battery_capacity_ah", charge["battery_capacity_ah"], step="0.1"),
                     optional_field("planning_dc_charge_amps", charge["planning_dc_charge_amps"], step="0.1"),
-                    field("finishing_allowance_minutes", charge["finishing_allowance_minutes"]), '</fieldset>',
+                    field("finishing_allowance_minutes", charge["finishing_allowance_minutes"]),
+                    check("learning_enabled", charge["learning_enabled"]),
+                    field("learning_min_sessions", charge["learning_min_sessions"]),
+                    field("learning_history_sessions", charge["learning_history_sessions"]),
+                    field("learning_soc_match_percent", charge["learning_soc_match_percent"], step="0.1"),
+                    field("learning_conservative_multiplier", charge["learning_conservative_multiplier"], step="0.01"),
+                    field("learning_max_gap_minutes", charge["learning_max_gap_minutes"]),
+                    field("learning_sample_interval_seconds", charge["learning_sample_interval_seconds"]),
+                    field("learning_min_charge_current_amps", charge["learning_min_charge_current_amps"], step="0.1"),
+                    field("learning_min_soc_gain_percent", charge["learning_min_soc_gain_percent"], step="0.1"),
+                    '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
                     check("maintenance_enabled", maint["enabled"]),
                     field("full_charge_interval_days", maint["full_charge_interval_days"]),
@@ -244,6 +265,10 @@ def make_handler(config_path, auth_path):
                     field("charge_margin_hours", storm["charge_margin_hours"]),
                     field("accumulation_hours", storm["accumulation_hours"]),
                     field("check_interval_minutes", storm["check_interval_minutes"]),
+                    field("post_storm_hold_hours", storm["post_storm_hold_hours"]),
+                    field("storm_event_join_hours", storm["storm_event_join_hours"]),
+                    field("max_forecast_age_hours", storm["max_forecast_age_hours"]),
+                    check("require_alert_clear_for_release", storm["require_alert_clear_for_release"]),
                     field("immediate_horizon_hours", storm["immediate_horizon_hours"]),
                     field("target_soc", storm["target_soc"], step="0.1"),
                     field("reserve_soc", storm["reserve_soc"], step="0.1"),
