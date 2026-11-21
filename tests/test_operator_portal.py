@@ -100,7 +100,7 @@ class PortalTests(unittest.TestCase):
                 "learning_taper_min_soc_percent": 95.0,
                 "learning_taper_min_current_amps": -2.0,
                 "learning_min_soc_gain_percent": 5.0,
-                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
+                "request_repeat_days": 4, "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "server_grace_seconds": 300, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
                 "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "nws_user_agent": "Solar-Fortress/1.0 (test@example.invalid)", "target_soc": 100, "reserve_soc": 90,
                 "snow_threshold": 6, "ice_threshold": .25, "wind_threshold": "",
@@ -124,6 +124,7 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(saved["charge_estimate"]["battery_capacity_ah"], 600)
         self.assertEqual(saved["charge_estimate"]["planning_dc_charge_amps"], 30)
         self.assertEqual(saved["storm"]["charge_margin_hours"], 8)
+        self.assertEqual(saved["storm"]["server_grace_seconds"], 300)
         self.assertEqual(saved["storm"]["post_storm_hold_hours"], 18)
         self.assertEqual(saved["storm"]["max_forecast_age_hours"], 6)
         self.assertIsNone(saved["storm"]["forecast_latitude"])
@@ -161,7 +162,7 @@ class PortalTests(unittest.TestCase):
                 "learning_taper_min_current_amps": -2.0,
                 "learning_min_soc_gain_percent": 5.0,
                 "full_charge_interval_days": 10, "request_repeat_days": 4,
-                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "immediate_horizon_hours": 24,
+                "lookahead_hours": 12, "watch_hours": 8, "confirmation_hours": 24, "charge_margin_hours": 8, "accumulation_hours": 24, "check_interval_minutes": 15, "server_grace_seconds": 300, "immediate_horizon_hours": 24,
                 "post_storm_hold_hours": 18, "storm_event_join_hours": 12,
                 "max_forecast_age_hours": 6, "forecast_latitude": "", "forecast_longitude": "", "nws_user_agent": "Solar-Fortress/1.0 (test@example.invalid)", "target_soc": 100, "reserve_soc": 90, "snow_threshold": 6, "ice_threshold": .25,
                 "wind_threshold": "", "snow_immediate_threshold": "",
