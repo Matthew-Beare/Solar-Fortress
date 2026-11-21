@@ -76,7 +76,7 @@ class PortalTests(unittest.TestCase):
         finally:
             conn.close()
         with self.assertRaises(ValueError):
-            password_record("1234567")
+            password_record("1234567", "test-user")
         with self.assertRaises(ValueError):
             password_record("sufficient", username="invalid:login")
 
