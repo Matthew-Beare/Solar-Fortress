@@ -15,9 +15,15 @@ DEFAULTS = {
         "grid_charge": 20.0,
         "battery_return": 35.0,
     },
+    "qualification_seconds": {
+        "pass_through": 60,
+        "grid_charge": 60,
+        "stop_grid_charge": 60,
+    },
     "maintenance": {
         "full_charge_interval_days": 10,
         "request_repeat_days": 4,
+        "post_full_hold_minutes": 60,
     },
     "storm": {
         "enabled": False,
@@ -67,6 +73,14 @@ def validate_config(raw):
         raise ValueError("Require grid_charge < grid_pass_through < battery_return")
     out["soc_thresholds"] = {**soc, "grid_charge": charge, "grid_pass_through": passthrough, "battery_return": battery}
 
+    qualification = out.get("qualification_seconds", {})
+    if not isinstance(qualification, dict):
+        raise ValueError("qualification_seconds must be an object")
+    qualification = {**DEFAULTS["qualification_seconds"], **qualification}
+    for timer in ("pass_through", "grid_charge", "stop_grid_charge"):
+        qualification[timer] = whole(qualification[timer], timer + " qualification", 1, 3600)
+    out["qualification_seconds"] = qualification
+
     maintenance = out.get("maintenance", {})
     if not isinstance(maintenance, dict):
         raise ValueError("maintenance must be an object")
@@ -76,6 +90,9 @@ def validate_config(raw):
     )
     maintenance["request_repeat_days"] = whole(
         maintenance["request_repeat_days"], "request_repeat_days", 1, 30
+    )
+    maintenance["post_full_hold_minutes"] = whole(
+        maintenance["post_full_hold_minutes"], "post_full_hold_minutes", 1, 1440
     )
     out["maintenance"] = maintenance
 
