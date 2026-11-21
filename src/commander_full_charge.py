@@ -63,7 +63,7 @@ def _load(path):
     return state
 
 
-def begin_full_charge(path, now, hold_hours, config, *, confirmed):
+def begin_full_charge(path, now, hold_hours, config, *, confirmed, replace_existing=False):
     """Record an explicit request, replacing any prior Commander request."""
     settings = validate_config(config)["commander_full_charge"]
     if not settings["enabled"]:
@@ -72,6 +72,10 @@ def begin_full_charge(path, now, hold_hours, config, *, confirmed):
         raise ValueError("Full-charge request requires confirmation")
     hold = whole(hold_hours, "requested hold hours", 0, settings["max_hold_hours"])
     start = _time(now)
+    existing = describe_full_charge(path, start)
+    if (existing["phase"] in ("charging", "holding_full")
+            and replace_existing is not True):
+        raise ValueError("A full-charge request is already active. Cancel it or explicitly replace it.")
     deadline = start + dt.timedelta(hours=settings["charge_attempt_timeout_hours"])
     state = {
         "version": 1, "phase": "charging",
