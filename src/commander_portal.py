@@ -92,8 +92,8 @@ def make_handler(config_path, state_path, storm_state_path=None):
                     '</strong></p>'
                 )
                 if status["phase"] == "charging":
-                    message += ('<p>Charging attempt expires at: ' +
-                                html.escape(status["charge_attempt_expires_at"]) +
+                    message += ('<p>Charging requested now. Failsafe manual override expires: ' +
+                                html.escape(status["override_expires_at"]) +
                                 '</p>')
                 if status["phase"] == "holding_full":
                     message += ('<p>Full charge confirmed by SmartShunt. '
@@ -109,12 +109,15 @@ def make_handler(config_path, state_path, storm_state_path=None):
                         str(commander["max_hold_hours"]) +
                         '" step="1" value="' + str(commander["default_hold_hours"]) +
                         '" required>'
-                        '<p>0 hours means stop the override when full charge is confirmed.</p>'
+                        '<p>Charging is requested immediately. The selected hold begins '
+                        'only after SmartShunt confirms full. 0 hours means stop at full. '
+                        'An independent, configurable failsafe eventually expires the manual '
+                        'request if SmartShunt never reports full.</p>'
                         '<label><input type="checkbox" name="confirm" value="yes" required>'
                         'I confirm this full-charge request</label>'
                         '<label><input type="checkbox" name="replace" value="yes">'
                         'Replace the existing full-charge request, if one is active</label>'
-                        '<button type="submit">Request Full Charge</button></form>'
+                        '<button type="submit">Charge Now: Request Full Charge</button></form>'
                         '<form method="post" action="/cancel">'
                         '<input type="hidden" name="csrf" value="' + token + '">'
                         '<label><input type="checkbox" name="confirm" value="yes" required>'
