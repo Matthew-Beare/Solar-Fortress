@@ -174,7 +174,7 @@ class StormWatchTests(unittest.TestCase):
         intervals = [
             {"start": self.now + dt.timedelta(hours=20),
              "end": self.now + dt.timedelta(hours=26), "ice_inches": .15},
-            {"start": self.now + dt.timedelta(hours=25),
+            {"start": self.now + dt.timedelta(hours=23),
              "end": self.now + dt.timedelta(hours=28), "ice_inches": .15},
         ]
         with self.assertRaises(ValueError):
@@ -187,8 +187,8 @@ class StormWatchTests(unittest.TestCase):
             "enabled": True, "watch_hours": 8, "charge_margin_hours": 8,
             "confirmation_hours": 24,
         }})
-        self.assertEqual(policy["watch_hours"], 8)
-        self.assertEqual(policy["charge_margin_hours"], 8)
+        self.assertEqual(policy["storm"]["watch_hours"], 8)
+        self.assertEqual(policy["storm"]["charge_margin_hours"], 8)
 
     def test_explicit_master_disable_prevents_charge_recommendation(self):
         off = validate_config({"storm": {"enabled": False}})
