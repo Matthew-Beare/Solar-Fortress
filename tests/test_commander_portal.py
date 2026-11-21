@@ -29,7 +29,7 @@ class CommanderPortalTests(unittest.TestCase):
             "commander_full_charge": {
                 "default_hold_hours": 8,
                 "max_hold_hours": 48,
-                "charge_attempt_timeout_hours": 24,
+                "override_expiry_hours": 240,
             }
         }))
         self.server = ThreadingHTTPServer(
@@ -57,6 +57,7 @@ class CommanderPortalTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("Commander Boomer", html)
         self.assertIn("After the SmartShunt confirms full charge", html)
+        self.assertIn("Charge Now: Request Full Charge", html)
         token = re.search(r'name="csrf" value="([^"]+)"', html).group(1)
         return token
 
@@ -78,6 +79,8 @@ class CommanderPortalTests(unittest.TestCase):
         saved = json.loads(self.state.read_text())
         self.assertEqual(saved["hold_hours"], 12)
         self.assertEqual(saved["phase"], "charging")
+        self.assertIn("override_expires_at", saved)
+        self.assertNotIn("charge_attempt_expires_at", saved)
         self.assertEqual(self.state.stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.request("POST", "/cancel", {
             "csrf": token, "confirm": "yes"
