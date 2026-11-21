@@ -122,7 +122,8 @@ def parse_settings(form, original):
     charge["finishing_allowance_minutes"] = int(form["finishing_allowance_minutes"][0])
     charge["learning_enabled"] = "learning_enabled" in form
     for key in ("learning_min_sessions", "learning_history_sessions",
-                "learning_max_gap_minutes", "learning_sample_interval_seconds"):
+                "learning_max_gap_minutes", "learning_sample_interval_seconds",
+                "learning_poll_seconds"):
         charge[key] = int(form[key][0])
     for key in ("learning_soc_match_percent", "learning_conservative_multiplier",
                 "learning_min_charge_current_amps", "learning_min_soc_gain_percent"):
@@ -249,6 +250,7 @@ def make_handler(config_path, auth_path):
                     field("learning_conservative_multiplier", charge["learning_conservative_multiplier"], step="0.01"),
                     field("learning_max_gap_minutes", charge["learning_max_gap_minutes"]),
                     field("learning_sample_interval_seconds", charge["learning_sample_interval_seconds"]),
+                    field("learning_poll_seconds", charge["learning_poll_seconds"]),
                     field("learning_min_charge_current_amps", charge["learning_min_charge_current_amps"], step="0.1"),
                     field("learning_min_soc_gain_percent", charge["learning_min_soc_gain_percent"], step="0.1"),
                     '</fieldset>',
