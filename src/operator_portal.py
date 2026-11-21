@@ -69,7 +69,7 @@ def load_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def password_record(password, username="admin"):
+def password_record(password, username):
     # Deliberately a local accidental-edit guard, NOT the server-plan trust
     # credential. Always keep this web listener on Pi loopback/SSH only.
     if not isinstance(password, str) or not 8 <= len(password) <= 256:
@@ -114,6 +114,13 @@ def parse_settings(form, original):
         "grid_charge": int(form["grid_charge_qualification_seconds"][0]),
         "stop_grid_charge": int(form["stop_grid_charge_qualification_seconds"][0]),
     }
+    merged["commander_full_charge"] = {
+        **merged.get("commander_full_charge", {}),
+        "enabled": "commander_full_charge_enabled" in form,
+        "default_hold_hours": int(form["commander_default_hold_hours"][0]),
+        "max_hold_hours": int(form["commander_max_hold_hours"][0]),
+        "charge_attempt_timeout_hours": int(form["commander_charge_attempt_timeout_hours"][0]),
+    }
     merged["maintenance"] = {
         **merged.get("maintenance", {}),
         "enabled": "maintenance_enabled" in form,
@@ -146,6 +153,8 @@ def parse_settings(form, original):
     storm["accumulation_hours"] = int(form["accumulation_hours"][0])
     storm["check_interval_minutes"] = int(form["check_interval_minutes"][0])
     storm["server_grace_seconds"] = int(form["server_grace_seconds"][0])
+    storm["manual_override_default_hours"] = int(form["manual_override_default_hours"][0])
+    storm["manual_override_max_hours"] = int(form["manual_override_max_hours"][0])
     storm["post_storm_hold_hours"] = int(form["post_storm_hold_hours"][0])
     storm["storm_event_join_hours"] = int(form["storm_event_join_hours"][0])
     storm["max_forecast_age_hours"] = int(form["max_forecast_age_hours"][0])
@@ -237,6 +246,7 @@ def make_handler(config_path, auth_path):
                 return ('<label><input type="checkbox" name="' + name + '"' +
                         (' checked' if enabled else '') + '> ' + name.replace("_", " ").title() +
                         '</label><p></p>')
+            commander = settings["commander_full_charge"]
             soc, qual, maint, storm, charge = (settings["soc_thresholds"],
                 settings["qualification_seconds"], settings["maintenance"],
                 settings["storm"], settings["charge_estimate"])
@@ -271,6 +281,13 @@ def make_handler(config_path, auth_path):
                     field("learning_taper_min_current_amps", charge["learning_taper_min_current_amps"], step="0.1"),
                     field("learning_min_soc_gain_percent", charge["learning_min_soc_gain_percent"], step="0.1"),
                     '</fieldset>',
+                    '<fieldset><legend>Commander Boomer: no-login full charge request</legend>',
+                    '<p>Commander can request one charge and choose how many hours to stay full AFTER SmartShunt confirms full. No change to administrator settings is permitted.</p>',
+                    check("commander_full_charge_enabled", commander["enabled"]),
+                    field("commander_default_hold_hours", commander["default_hold_hours"]),
+                    field("commander_max_hold_hours", commander["max_hold_hours"]),
+                    field("commander_charge_attempt_timeout_hours", commander["charge_attempt_timeout_hours"]),
+                    '</fieldset>',
                     '<fieldset><legend>Maintenance request cadence</legend>',
                     check("maintenance_enabled", maint["enabled"]),
                     field("full_charge_interval_days", maint["full_charge_interval_days"]),
@@ -285,6 +302,8 @@ def make_handler(config_path, auth_path):
                     field("accumulation_hours", storm["accumulation_hours"]),
                     field("check_interval_minutes", storm["check_interval_minutes"]),
                     field("server_grace_seconds", storm["server_grace_seconds"]),
+                    field("manual_override_default_hours", storm["manual_override_default_hours"]),
+                    field("manual_override_max_hours", storm["manual_override_max_hours"]),
                     field("post_storm_hold_hours", storm["post_storm_hold_hours"]),
                     field("storm_event_join_hours", storm["storm_event_join_hours"]),
                     field("max_forecast_age_hours", storm["max_forecast_age_hours"]),
